@@ -1,0 +1,4 @@
+#ifndef ONITAMA_MAIN_H
+#define ONITAMA_MAIN_H
+
+#endif //ONITAMA_MAIN_H
