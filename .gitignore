@@ -1,5 +1,7 @@
 # IDE
 .idea/
+.vs/
+out/
 
 # CMake
 CMakeLists.txt.user
@@ -14,6 +16,7 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 cmake-build-*/
+CMakeSettings.json
 
 # Prerequisites
 *.d
