@@ -1,8 +1,6 @@
 #include "make_move.h"
 
-
 constexpr int MOVE_MASK = 33554431, STUDENT_CAPTURE_MASK = 67108864;
-
 
 // Also affects the move's capture bits.
 void make_move(Board *board, Move &move) {
@@ -32,7 +30,6 @@ void make_move(Board *board, Move &move) {
     board->turn = !board->turn;
 }
 
-
 void undo_move(Board *board, Move &move) {
     Bitboard move_bits = (move & MOVE_MASK);
     bool card_index = ((move >> SQUARE_NUM) & 1);
@@ -42,7 +39,9 @@ void undo_move(Board *board, Move &move) {
 
     // Optionally un-capture a student.
     if (move & STUDENT_CAPTURE_MASK) {
-        board->pieces[!board->turn][STUDENT] |= (board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER]) & move_bits;
+        board->pieces[!board->turn][STUDENT] |= (board->pieces[board->turn][STUDENT] |
+                                                 board->pieces[board->turn][MASTER]) &
+                                                move_bits;
     }
 
     // Move the piece.

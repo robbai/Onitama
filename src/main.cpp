@@ -1,17 +1,13 @@
 #include <ctime>
 #include <string>
-#include "move_tables.h"
-#include "move_gen.h"
+
 #include "make_move.h"
-
-
-using namespace std;
-
+#include "move_gen.h"
+#include "move_tables.h"
 
 constexpr uint8_t MAX_DEPTH = 8;
 
 Move ALL_MOVES[MAX_DEPTH][MAX_MOVES];
-
 
 uint64_t perft(Board *board, int depth, int ply = 0) {
     if (depth == 0 || board->game_over())
@@ -30,7 +26,6 @@ uint64_t perft(Board *board, int depth, int ply = 0) {
     return nodes;
 }
 
-
 int main() {
     init_move_tables();
 
@@ -45,12 +40,10 @@ int main() {
     for (int depth = 0; depth <= MAX_DEPTH; ++depth) {
         clock_t start = clock();
         uint64_t result = perft(&board, depth);
-        double duration = (clock() - start) / (double) CLOCKS_PER_SEC;
-        double speed = (double) result / duration / 1000000;
-        printf(
-                "Depth %i: %10llu nodes (%.5ss, %5.5s Mnps)\n",
-                depth, result, to_string(duration).c_str(), to_string(speed).c_str()
-        );
+        double duration = (clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
+        double speed = static_cast<double>(result) / duration / 1000000;
+        printf("Depth %i: %10llu nodes (%.5ss, %5.5s Mnps)\n", depth, result,
+               std::to_string(duration).c_str(), std::to_string(speed).c_str());
     }
 
     return 0;

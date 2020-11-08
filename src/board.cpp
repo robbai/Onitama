@@ -1,10 +1,11 @@
-#include <cstring>
 #include "board.h"
 
+#include <cstring>
 
 // This function only checks for whether the non-moving player has won.
 bool Board::game_over() {
-    return (this->pieces[this->turn][MASTER] & (this->pieces[!this->turn][STUDENT] | this->pieces[!this->turn][MASTER])) ||
+    return (this->pieces[this->turn][MASTER] &
+            (this->pieces[!this->turn][STUDENT] | this->pieces[!this->turn][MASTER])) ||
            (this->pieces[!this->turn][MASTER] & HOMES[this->turn]);
 }
 
@@ -13,7 +14,6 @@ Board Board::copy() {
     memcpy(&board_copy, &*this, sizeof(*this));
     return board_copy;
 }
-
 
 bool Board::operator==(const Board &other) {
     // Check cards and pieces.
