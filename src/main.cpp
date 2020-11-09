@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <bitset>
 #include <ctime>
 #include <string>
 
@@ -37,13 +39,19 @@ int main() {
     board.cards[1][1] = ELEPHANT;
     board.side_card = CRAB;
 
+    const uint64_t TRUE_RESULTS[] = {
+            1,       10,        130,        1989,        28509,        487780,
+            7748422, 137281607, 2353802670, 41817124521, 746335807162,
+    };
+
     for (int depth = 0; depth <= MAX_DEPTH; ++depth) {
         clock_t start = clock();
         uint64_t result = perft(&board, depth);
         double duration = (clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
         double speed = static_cast<double>(result) / duration / 1000000;
-        printf("Depth %i: %10llu nodes (%.5ss, %5.5s Mnps)\n", depth, result,
+        printf("Depth %i:%12llu nodes (%.5ss, %5.5s Mnps)\n", depth, result,
                std::to_string(duration).c_str(), std::to_string(speed).c_str());
+        assert(TRUE_RESULTS[depth] == result);
     }
 
     return 0;
