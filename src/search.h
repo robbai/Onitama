@@ -4,7 +4,7 @@
 
 #include "board.h"
 
-void search(Board *board);
+Move search(Board *board);
 
 
 #endif  // ONITAMA_SEARCH_H

@@ -2,6 +2,7 @@
 #define ONITAMA_MOVE_H
 
 #include "types.h"
+#include "util.h"
 
 namespace MoveBits {
     constexpr Bitboard xor_board(Move move) {

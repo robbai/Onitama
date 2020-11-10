@@ -12,6 +12,7 @@ const int BOARD_LENGTH = 5, SQUARE_NUM = (BOARD_LENGTH * BOARD_LENGTH);
 const int PLAYERS_NUM = 2;
 const int CARDS_EACH_NUM = 2;
 const int MAX_MOVES = 40;
+const Bitboard FULL_BITBOARD = ((Bitboard) 1 << SQUARE_NUM) - 1;
 
 enum Piece { STUDENT, MASTER, PIECE_TYPES_NUM };
 
@@ -32,7 +33,8 @@ enum Card {
     FROG,
     OX,
     EEL,
-    CARD_NUM
+    CARD_NUM,
+    NO_CARD
 };
 
 #endif  // ONITAMA_TYPES_H
