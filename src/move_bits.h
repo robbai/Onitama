@@ -21,10 +21,12 @@ namespace MoveBits {
         return move & 134217728;
     }
 
-    constexpr Move create_move(uint32_t mask_1, uint32_t mask_2, bool card_index,
-                               bool capture, bool piece_type) {
-        return mask_1 | mask_2 | (card_index << SQUARE_NUM) | (capture << 26) |
-               (piece_type << 27);
+    constexpr Move half_create_move(uint32_t mask_1, bool card_index, bool piece_type) {
+        return mask_1 | (card_index << SQUARE_NUM) | (piece_type << 27);
+    }
+
+    constexpr Move finish_create_move(Move move, uint32_t mask_2, bool capture) {
+        return move | mask_2 | (capture << 26);
     }
 }  // namespace MoveBits
 

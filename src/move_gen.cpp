@@ -16,17 +16,17 @@ uint8_t gen_moves(Board *board, Move *moves, Bitboard targets) {
 
         // Iterate through cards.
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-            // Iterate through move squares.
+            // Iterate through move squares and create moves.
             Bitboard squares = MOVE_TABLES[board->cards[board->turn][card_index]][from]
                                           [board->turn] &
                                targets;
+            Move move = MoveBits::half_create_move(
+                    mask_1, card_index, mask_1 & board->pieces[board->turn][MASTER]);
             while (squares) {
                 Bitboard mask_2 = squares & -squares;
 
-                moves[total] = MoveBits::create_move(
-                        mask_1, mask_2, card_index,
-                        mask_2 & board->pieces[!board->turn][STUDENT],
-                        mask_1 & board->pieces[board->turn][MASTER]);
+                moves[total] = MoveBits::finish_create_move(
+                        move, mask_2, mask_2 & board->pieces[!board->turn][STUDENT]);
                 ++total;
 
                 squares ^= mask_2;
@@ -47,17 +47,17 @@ uint8_t count_moves(Board *board) {
             board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER];
     Bitboard targets = ~pieces;
     while (pieces) {
-        uint32_t mask = pieces & -pieces;
+        int from = __builtin_ctz(pieces);
 
         // Iterate through cards.
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
             // Add move squares.
             total += __builtin_popcount(MOVE_TABLES[board->cards[board->turn][card_index]]
-                                                   [__builtin_ctz(mask)][board->turn] &
+                                                   [from][board->turn] &
                                         targets);
         }
 
-        pieces ^= mask;
+        pieces ^= (1u << from);
     }
 
     return total;
