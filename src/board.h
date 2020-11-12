@@ -11,10 +11,10 @@ class Board {
     Bitboard pieces[PLAYERS_NUM][PIECE_TYPES_NUM] = {{27, HOMES[0]},
                                                      {28311552, HOMES[1]}};
     Card cards[CARDS_EACH_NUM][CARDS_EACH_NUM] = {
-            {NO_CARD, NO_CARD},
-            {NO_CARD, NO_CARD}};  // Cards for both players.
-    Card side_card = NO_CARD;     // Card at the side.
-    bool turn = false;            // Turn to move.
+            {CARD_NONE, CARD_NONE},
+            {CARD_NONE, CARD_NONE}};  // Cards for both players.
+    Card side_card = CARD_NONE;       // Card at the side.
+    bool turn = WHITE;                // Turn to move.
 
     bool game_over();
     Board copy();

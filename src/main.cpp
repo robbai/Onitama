@@ -8,6 +8,6 @@ int main() {
     std::cout << "Match ID:";
     std::cin >> match_id;
 
-    Client client;
-    return client.loop(match_id);
+    Client client(match_id);
+    return client.loop();
 }

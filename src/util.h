@@ -19,5 +19,6 @@ const std::string SQUARE_NAMES[] = {
 std::string pretty_bitboard(Bitboard bitboard, bool card = false);
 std::string pretty_board(Board *board);
 std::string move_string(Board *board, Move move);
+std::string to_lower(std::string string);
 
 #endif  // ONITAMA_UTIL_H

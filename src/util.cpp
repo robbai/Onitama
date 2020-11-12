@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "util.h"
 #include "move_bits.h"
 
@@ -61,4 +62,11 @@ std::string move_string(Board *board, Move move) {
     int to = __builtin_ctz(xor_board ^ (1 << from));
     return CARD_NAMES[board->cards[board->turn][MoveBits::card_index(move)]] + ":" +
            SQUARE_NAMES[from] + SQUARE_NAMES[to];
+}
+
+std::string to_lower(std::string string) {
+    std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) {
+        return std::tolower(c);
+    });
+    return string;
 }

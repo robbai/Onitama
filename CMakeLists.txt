@@ -33,7 +33,7 @@ add_executable(
         src/client.cpp
         src/client.h)
 
-set(EXTERNAL_LIB_HEADERS lib/easywsclient)
+set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)
 
 target_include_directories(
         Onitama PRIVATE
