@@ -29,9 +29,9 @@ add_executable(
         src/perft.cpp
         src/perft.h
         lib/easywsclient/easywsclient.cpp
-        lib/easywsclient/easywsclient.hpp
         src/client.cpp
-        src/client.h)
+        src/client.h
+)
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)
 

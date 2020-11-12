@@ -4,7 +4,13 @@
 
 #include "board.h"
 
-Move search(Board *board);
+constexpr uint8_t MAX_DEPTH = 30;
 
+Move start_search(Board *board);
+
+struct Line {
+    int length = 0;         // Number of moves in the line.
+    Move moves[MAX_DEPTH];  // The line.
+};
 
 #endif  // ONITAMA_SEARCH_H

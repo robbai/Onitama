@@ -98,7 +98,7 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
     // Calculate and send a move back.
     if (!std::strcmp(doc["gameState"].GetString(), "in progress") &&
         board.turn == our_turn) {
-        Move move = search(&board);
+        Move move = start_search(&board);
 
         // Translate move and send.
         string move_message = move_string(&board, move);

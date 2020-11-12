@@ -3,6 +3,8 @@
 #include <string>
 #include <cmath>
 #include <utility>
+#include <cstring>
+#include <iostream>
 
 #include "board.h"
 #include "make_move.h"
@@ -11,12 +13,44 @@
 #include "move_tables.h"
 #include "search.h"
 
-constexpr uint8_t MAX_DEPTH = 30;
 constexpr int MIN_EVAL = -1000, TEMPO = 3, WINDOW = 6;
 
+uint8_t root_move_count = 0;
 uint64_t nodes = 0;
 
+Line pv_line;
+
 Move ALL_MOVES[MAX_DEPTH][MAX_MOVES];
+
+int q_search(Board *board, int alpha, int beta, int ply);
+
+std::string verify_pv(Board *board, Line *line, int depth) {
+    int count = 0;
+    std::string pv = "";
+
+    Move moves[MAX_MOVES];
+    depth = std::min(depth, line->length);
+    for (int i = 0; i < depth; ++i) {
+        Move move = line->moves[i];
+        uint8_t size = gen_moves(board, moves);
+        for (int j = 0; j < size; j++) {
+            if (moves[j] == move) {
+                pv += move_string(board, move) + ", ";
+                make_move(board, move);
+                ++count;
+                break;
+            }
+        }
+        if (count == i)
+            break;
+    }
+    for (int i = (count - 1); i >= 0; --i)
+        undo_move(board, line->moves[i]);
+
+    line->length = count;
+
+    return pv.substr(0, pv.length() - 2);
+}
 
 int eval(Board *board) {
     int eval = __builtin_popcount(board->pieces[0][STUDENT] | board->pieces[0][MASTER]) -
@@ -55,7 +89,66 @@ int eval(Board *board) {
     return eval;
 }
 
-int quiescence(Board *board, int alpha, int beta, int ply) {
+int search(Board *board, int depth, int alpha, int beta, int ply, bool following_pv,
+           Line *curr_line) {
+    // Leaf.
+    if (board->game_over()) {
+        ++nodes;
+        return MIN_EVAL + ply;
+    }
+    if (depth == 0)
+        return q_search(board, alpha, beta, ply);
+
+    Line line;
+    Move *moves = ALL_MOVES[ply];
+    uint8_t size = gen_moves(board, moves);
+
+    // PV ordering.
+    if (following_pv) {
+        following_pv = false;
+        for (int i = 0; i < size; ++i) {
+            if (moves[i] == pv_line.moves[ply]) {
+                std::swap(moves[0], moves[i]);
+                following_pv = true;
+                goto move_loop;
+            }
+        }
+    }
+
+    // IID ordering.
+    if (depth > 4) {
+        search(board, depth / 4, alpha, beta, ply, following_pv, &line);
+        for (int i = 0; i < size; ++i) {
+            if (moves[i] == line.moves[0]) {
+                std::swap(moves[0], moves[i]);
+                break;
+            }
+        }
+    }
+
+    // Move loop.
+move_loop:
+    for (int i = 0; i < size; ++i) {
+        const Move move = moves[i];
+        make_move(board, move);
+        int value =
+                -search(board, depth - 1, -beta, -alpha, ply + 1, following_pv, &line);
+        undo_move(board, move);
+
+        if (value >= beta)
+            return beta;
+        if (value > alpha) {
+            alpha = value;
+            curr_line->moves[0] = move;
+            memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
+            curr_line->length = line.length + 1;
+        }
+    }
+
+    return alpha;
+}
+
+int q_search(Board *board, int alpha, int beta, int ply) {
     ++nodes;
 
     // Leaf.
@@ -79,7 +172,7 @@ int quiescence(Board *board, int alpha, int beta, int ply) {
     for (int i = 0; i < size; ++i) {
         const Move move = moves[i];
         make_move(board, move);
-        value = -quiescence(board, -beta, -alpha, ply + 1);
+        value = -q_search(board, -beta, -alpha, ply + 1);
         undo_move(board, move);
 
         if (value >= beta)
@@ -91,64 +184,23 @@ int quiescence(Board *board, int alpha, int beta, int ply) {
     return alpha;
 }
 
-int negamax(Board *board, int depth, int alpha, int beta, int ply, Move *best_move) {
-    // Leaf.
-    if (board->game_over()) {
-        ++nodes;
-        return MIN_EVAL + ply;
-    }
-    if (depth == 0)
-        return quiescence(board, alpha, beta, ply);
-
-    int value = MIN_EVAL;
-    Move *moves = ALL_MOVES[ply];
-    uint8_t size = gen_moves(board, moves);
-
-    // IID.
-    if (depth > 4) {
-        Move *iid_move = new Move;
-        negamax(board, depth / 4, alpha, beta, ply, iid_move);
-        for (int i = 0; i < size; ++i) {
-            if (moves[i] == *iid_move) {
-                std::swap(moves[0], moves[i]);
-                break;
-            }
-        }
-    }
-
-    // Move loop.
-    for (int i = 0; i < size; ++i) {
-        const Move move = moves[i];
-        make_move(board, move);
-        int new_value = -negamax(board, depth - 1, -beta, -alpha, ply + 1, nullptr);
-        undo_move(board, move);
-
-        if (value < new_value) {
-            value = new_value;
-            if (best_move) {
-                *best_move = move;
-            }
-        }
-
-        if (value > alpha)
-            alpha = value;
-        if (alpha >= beta)
-            break;
-    }
-
-    return value;
-}
-
-
-Move search(Board *board) {
+Move start_search(Board *board) {
+    // Setup.
+    uint8_t moves_made = (board->move_count - root_move_count);
+    root_move_count += moves_made;
+    pv_line.length -= moves_made;
+    for (int i = 0; i < pv_line.length; ++i)
+        pv_line.moves[i] = pv_line.moves[i + moves_made];
+    std::cout << "Found PV: [" << verify_pv(board, &pv_line, pv_line.length) << "]"
+              << std::endl;
+    nodes = 0;
     clock_t start = clock();
-
-    Move best_move;
-
     int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
+
+    // Iterative deepening.
     while (depth <= MAX_DEPTH) {
-        Move *root_move = new Move;
-        int value = negamax(board, depth, alpha, beta, 0, root_move);
+        Line line;
+        int value = search(board, depth, alpha, beta, 0, pv_line.length, &line);
 
         float elapsed = (std::clock() - start) / static_cast<float>(CLOCKS_PER_SEC);
 
@@ -159,7 +211,9 @@ Move search(Board *board) {
             alpha = value - WINDOW;
             beta = value + WINDOW;
 
-            best_move = *root_move;
+            // Replace PV.
+            if (line.moves[0] != pv_line.moves[0] || line.length > pv_line.length)
+                pv_line = line;
 
             int mate_plies = std::abs(MIN_EVAL + std::abs(value));
 
@@ -172,8 +226,9 @@ Move search(Board *board) {
                         static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
                 value_str = "#" + std::to_string(mate_depth);
             }
-            printf("Depth %2i: Move = %13s, Evaluation =%5s (%.3fs)\n", depth,
-                   move_string(board, best_move).c_str(), value_str.c_str(), elapsed);
+            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, %.3fs, PV = [%s]\n",
+                   depth, value_str.c_str(), nodes, elapsed,
+                   verify_pv(board, &pv_line, depth).c_str());
 
             // End search by mate detection.
             if (mate_plies <= depth)
@@ -185,5 +240,5 @@ Move search(Board *board) {
         if (depth > 1 && elapsed > 6)
             break;
     }
-    return best_move;
+    return pv_line.moves[0];
 }

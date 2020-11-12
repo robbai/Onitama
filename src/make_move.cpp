@@ -17,6 +17,7 @@ void make_move(Board *board, Move move) {
 
     // Swap the turn.
     board->turn = !board->turn;
+    ++board->move_count;
 }
 
 void undo_move(Board *board, Move move) {
@@ -25,6 +26,7 @@ void undo_move(Board *board, Move move) {
 
     // Swap the turn.
     board->turn = !board->turn;
+    --board->move_count;
 
     // Optionally un-capture a student.
     if (MoveBits::capture(move))
