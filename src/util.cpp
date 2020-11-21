@@ -15,7 +15,7 @@ std::string pretty_bitboard(Bitboard bitboard, bool card) {
         }
         str += "|\n";
     }
-    return str + "+-----------+\n";
+    return str + "+-----------+";
 }
 
 std::string pretty_board(Board *board) {

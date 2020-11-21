@@ -1,6 +1,6 @@
 #include "perft.h"
 
-#include <assert.h>
+#include <cassert>
 #include <ctime>
 #include <string>
 
@@ -41,7 +41,7 @@ void perft_routine() {
     board.cards[1][1] = ELEPHANT;
     board.side_card = CRAB;
 
-    const uint64_t TRUE_RESULTS[] = {
+    const uint64_t ORACLE[] = {
             1,       10,        130,        1989,        28509,        487780,
             7748422, 137281607, 2353802670, 41817124521, 746335807162,
     };
@@ -53,6 +53,6 @@ void perft_routine() {
         double speed = static_cast<double>(result) / duration / 1000000;
         printf("Depth %i:%12llu nodes (%.5ss, %5.5s Mnps)\n", depth, result,
                std::to_string(duration).c_str(), std::to_string(speed).c_str());
-        assert(TRUE_RESULTS[depth] == result);
+        assert(ORACLE[depth] == result);
     }
 }

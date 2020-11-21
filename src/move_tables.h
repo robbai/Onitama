@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-extern Bitboard MOVE_TABLES[CARD_NUM][SQUARE_NUM][PLAYERS_NUM];
+extern Bitboard MOVE_TABLES[CARD_NUM * SQUARE_NUM * PLAYERS_NUM];
 
 void init_move_tables();
 
