@@ -4,7 +4,7 @@
 
 using std::vector;
 
-Bitboard MOVE_TABLES[CARD_NUM][SQUARE_NUM][PLAYERS_NUM];
+Bitboard MOVE_TABLES[CARD_NUM * SQUARE_NUM * PLAYERS_NUM];
 
 bool on_board(int file, int rank) {
     return file >= 0 && file < BOARD_LENGTH && rank >= 0 && rank < BOARD_LENGTH;
@@ -36,19 +36,18 @@ void init_move_tables() {
     for (int square = 0; square < SQUARE_NUM; ++square) {
         int file = square % BOARD_LENGTH, rank = square / BOARD_LENGTH;
         for (int card = 0; card < CARD_NUM; ++card) {
+            int index = (card * SQUARE_NUM + square) * PLAYERS_NUM;
             for (vector<int> delta : DELTAS[card]) {
                 // White's perspective.
                 int card_file = file + delta[0], card_rank = rank + delta[1];
                 if (on_board(card_file, card_rank)) {
-                    MOVE_TABLES[card][square][0] |=
-                            1 << (card_file + card_rank * BOARD_LENGTH);
+                    MOVE_TABLES[index] |= 1 << (card_file + card_rank * BOARD_LENGTH);
                 }
 
                 // Black's perspective.
                 card_file = file - delta[0], card_rank = rank - delta[1];
                 if (on_board(card_file, card_rank)) {
-                    MOVE_TABLES[card][square][1] |=
-                            1 << (card_file + card_rank * BOARD_LENGTH);
+                    MOVE_TABLES[index + 1] |= 1 << (card_file + card_rank * BOARD_LENGTH);
                 }
             }
         }

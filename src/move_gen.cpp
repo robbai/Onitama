@@ -17,9 +17,11 @@ uint8_t gen_moves(Board *board, Move *moves, Bitboard targets) {
         // Iterate through cards.
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
             // Iterate through move squares and create moves.
-            Bitboard squares = MOVE_TABLES[board->cards[board->turn][card_index]][from]
-                                          [board->turn] &
-                               targets;
+            Bitboard squares =
+                    MOVE_TABLES[(board->cards[board->turn][card_index] * SQUARE_NUM +
+                                 from) * PLAYERS_NUM +
+                                board->turn] &
+                    targets;
             Move move = MoveBits::half_create_move(
                     mask_1, card_index, mask_1 & board->pieces[board->turn][MASTER]);
             while (squares) {
@@ -52,9 +54,11 @@ uint8_t count_moves(Board *board) {
         // Iterate through cards.
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
             // Add move squares.
-            total += __builtin_popcount(MOVE_TABLES[board->cards[board->turn][card_index]]
-                                                   [from][board->turn] &
-                                        targets);
+            total += __builtin_popcount(
+                    MOVE_TABLES[(board->cards[board->turn][card_index] * SQUARE_NUM +
+                                 from) * PLAYERS_NUM +
+                                board->turn] &
+                    targets);
         }
 
         pieces ^= (1u << from);

@@ -66,8 +66,10 @@ int eval(Board *board) {
 
             // Iterate through cards.
             for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-                squares |= MOVE_TABLES[board->cards[turn][card_index]]
-                                      [__builtin_ctz(mask)][turn] &
+                squares |= MOVE_TABLES[(board->cards[turn][card_index] * SQUARE_NUM +
+                                        __builtin_ctz(mask)) *
+                                               PLAYERS_NUM +
+                                       turn] &
                            targets;
             }
 
@@ -202,7 +204,7 @@ Move start_search(Board *board) {
         Line line;
         int value = search(board, depth, alpha, beta, 0, pv_line.length, &line);
 
-        float elapsed = (std::clock() - start) / static_cast<float>(CLOCKS_PER_SEC);
+        double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
         // Window.
         if (value <= alpha || value >= beta) {

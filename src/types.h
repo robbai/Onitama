@@ -4,8 +4,7 @@
 #include <cstdint>
 
 typedef uint32_t Bitboard;  // 25 bits for squares.
-// 25 bits for XOR-bitboard, 1 bit for card index used, 1 bit for student
-// captured (applied post-make).
+// 25 bits for XOR-bitboard, 1 bit for card index used, 1 bit for student captured, 1 bit for piece type.
 typedef uint32_t Move;
 
 const int BOARD_LENGTH = 5, SQUARE_NUM = (BOARD_LENGTH * BOARD_LENGTH);
