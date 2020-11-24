@@ -13,6 +13,8 @@ using easywsclient::WebSocket;
 
 const string SERVER_URL = "ws://litama.herokuapp.com";
 
+const string USERNAME = "robbai";
+
 Turn parse_colour(const string colour) {
     return (Turn)(colour == "red");
 }
@@ -52,7 +54,7 @@ void Client::handle_json(std::unique_ptr<WebSocket> const &ws, string json) {
 }
 
 void Client::receive_create(rapidjson::Document &doc) {
-    our_turn = parse_colour(doc["color"].GetString());
+    index = (Turn) doc["index"].GetInt();
     token = doc["token"].GetString();
 }
 
@@ -62,12 +64,22 @@ void Client::receive_join(rapidjson::Document &doc) {
 
 void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
                            rapidjson::Document &doc) {
+    // Simply exit if the game is over.
+    if (std::strcmp(doc["winner"].GetString(), "none")) {
+        end_loop = true;
+        return;
+    }
+
+    // Skip parsing if not in progress.
+    if (std::strcmp(doc["gameState"].GetString(), "in progress"))
+        return;
+
     // Parse turn.
     board.turn = parse_colour(doc["currentTurn"].GetString());
 
     // Parse cards.
     for (int i = 0; i < PLAYERS_NUM; ++i) {
-        const auto &card_array = doc["cards"][!i ? "blue" : "red"].GetArray();
+        const auto &card_array = doc["cards"][i ? "red" : "blue"].GetArray();
         for (int j = 0; j < CARDS_EACH_NUM; ++j)
             board.cards[i][j] = parse_card(card_array[j].GetString());
     }
@@ -96,8 +108,7 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
     std::cout << std::endl << pretty_board(&board) << std::endl;
 
     // Calculate and send a move back.
-    if (!std::strcmp(doc["gameState"].GetString(), "in progress") &&
-        board.turn == our_turn) {
+    if (board.turn == (doc["indices"]["red"].GetInt() == index ? BLACK : WHITE)) {
         Move move = start_search(&board);
 
         // Translate move and send.
@@ -111,10 +122,6 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
         }
         send(ws, "move " + match_id + " " + token + " " + move_message);
     }
-
-    // Simply abort if the game is over.
-    if (std::strcmp(doc["winner"].GetString(), "none"))
-        abort();
 
     std::cout << std::endl;
 }
@@ -141,9 +148,10 @@ int Client::loop() {
     std::unique_ptr<WebSocket> ws(WebSocket::from_url(SERVER_URL));
 
     // Main loop.
-    send(ws, "join " + match_id);
+    end_loop = false;
+    send(ws, "join " + match_id + " " + USERNAME);
     send(ws, "spectate " + match_id);
-    while (ws->getReadyState() != WebSocket::CLOSED) {
+    while (ws->getReadyState() != WebSocket::CLOSED && !end_loop) {
         ws->poll(-1);
         ws->dispatch([&](const std::string &json) {
             handle_json(ws, json);
