@@ -23,7 +23,8 @@ class Client {
  private:
     Board board;
     string match_id, token;
-    Turn our_turn;
+    Turn index;
+    bool end_loop;
     void send(std::unique_ptr<WebSocket> const &ws, string message);
     void handle_json(std::unique_ptr<WebSocket> const &unique_ptr, string json);
     void receive_create(rapidjson::Document &doc);
