@@ -1,4 +1,4 @@
-#include "bitbase.h"
+#include "tb_gen.h"
 
 #include <algorithm>
 #include <iostream>
@@ -7,16 +7,22 @@
 #include <ctime>
 #include <string>
 
-#include "move_tables.h"
-#include "util.h"
+#include "../move_tables.h"
+#include "../util.h"
 
-// Card setup.
-constexpr Card CARD_LIST[] = {CRANE, HORSE, OX, BOAR, EEL};
+using std::cout;
+using std::endl;
+using std::max;
+using std::string;
+using std::to_string;
+
+// Card list.
+constexpr Card CARD_LIST[] = {TIGER, CRAB, RABBIT, BOAR, CRANE};
 // Students.
-constexpr uint8_t STUDENT_MEN = 3;
+constexpr uint8_t STUDENT_MEN = 2;
 
+// Card setups.
 constexpr uint8_t SETUPS_NUM = 30;
-
 constexpr uint8_t SETUPS[] = {
         255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0,   255,
         1,   255, 255, 255, 255, 255, 2,   255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -35,61 +41,100 @@ constexpr uint8_t SETUPS_INVERSE[] = {14,  16,  22,  32,  34,  58,  38,  46,  64
                                       48,  66,  86,  88,  166, 92,  100, 172, 96,  102,
                                       174, 110, 136, 190, 114, 138, 192, 126, 144, 198};
 
-uint64_t get_max_index();
-bool legal(Position *pos);
-bool game_over(Position *pos);
-uint64_t get_index(Position *pos);
-Position from_index(uint64_t index);
+Index get_max_index();
+bool is_legal(Position *pos);
+bool is_game_over(Position *pos);
+Index get_index(Position *pos);
+Position from_index(Index index);
 uint8_t gen_forward(Position *pos, Position *forward);
 uint8_t gen_backward(Position *pos, Position *backward);
-std::string pretty_position(Position *pos);
+string pretty_position(Position *pos);
 
-void create_bitbase() {
+void generate_tb() {
     clock_t start = clock();
 
-    // Populate array.
-    const uint64_t MAX_INDEX = get_max_index();
-    std::cout << "Array size: " << MAX_INDEX << std::endl;
-    Entry *all = new Entry[MAX_INDEX];
-    for (uint64_t i = 0; i < MAX_INDEX; ++i) {
-        Entry *entry = &all[i];
+    // Populate.
+    const Index MAX_INDEX = get_max_index();
+    cout << "Array size: " << MAX_INDEX << endl;
+    Entry *entries = new Entry[MAX_INDEX];
+    for (Index index = 0; index < MAX_INDEX; ++index) {
+        Entry *entry = &entries[index];
         entry->iter = 0;
-        Position pos = from_index(i);
-        assert(__builtin_popcountll(pos.cards) == 5);
-        if (legal(&pos)) {
-            entry->state = (game_over(&pos) ? LOSS : UNKNOWN);
-            assert(i == get_index(&pos) || STUDENT_MEN >= 2);
+
+        Position pos = from_index(index);
+        if (is_legal(&pos)) {
+            entry->state = (is_game_over(&pos) ? LOSS : UNKNOWN);
+
+            //            Position pos_2 = from_index(get_index(&pos));
+            //            if (!(pos.turn == pos_2.turn) ||
+            //                !(pos.pieces[WHITE] == pos_2.pieces[WHITE]) ||
+            //                !(pos.pieces[BLACK] == pos_2.pieces[BLACK]) ||
+            //                !(pos.masters == pos_2.masters) || !(pos.cards == pos_2.cards)) {
+            //                Index index_2 = get_index(&pos);
+            //                cout << "Provided: " << index << endl
+            //                     << "Produced: " << index_2 << endl
+            //                     << pretty_position(&pos) << endl
+            //                     << endl
+            //                     << pretty_position(&pos_2) << endl;
+            //                from_index(index_2);
+            //            }
+            //            assert(pos.turn == pos_2.turn);
+            //            assert(pos.pieces[WHITE] == pos_2.pieces[WHITE]);
+            //            assert(pos.pieces[BLACK] == pos_2.pieces[BLACK]);
+            //            assert(pos.masters == pos_2.masters);
+            //            assert(pos.cards == pos_2.cards);
+
+            //            if (index != get_index(&pos)) {
+            //                Position pos_2 = from_index(get_index(&pos));
+            //                cout << "Provided: " << index << endl
+            //                     << "Produced: " << get_index(&pos) << endl
+            //                     << pretty_position(&pos) << endl
+            //                     << endl
+            //                     << pretty_position(&pos_2) << endl;
+            //                from_index(index);
+            //            }
+            assert(index == get_index(&pos));
         } else {
             entry->state = ILLEGAL;
         }
     }
+    //    cout << "Success" << endl;
+    //    abort();
 
-    // Continue loop.
+    // Generate.
+    Position next_pos[MAX_MOVES];
+    uint8_t next_size;
     bool change_made = true;
-    Position then[MAX_MOVES];
-    uint8_t size;
     for (uint8_t iter = 0; change_made; ++iter) {
-        std::cout << "Iter: " << std::to_string(iter) << std::endl;
         change_made = false;
-        for (uint64_t i = 0; i < MAX_INDEX; ++i) {
-            Position pos;
-            Entry *entry = &all[i];
+        cout << "Iter: " << to_string(iter) << endl;
+        for (Index index = 0; index < MAX_INDEX; ++index) {
+            Entry *entry = &entries[index];
             if (entry->iter != iter)
                 continue;
+            Position pos;
             switch (entry->state) {
                 case LOSS:
-                    pos = from_index(i);
+                    pos = from_index(index);
                     assert(pos.masters);
                 loss:  // For branching from a self-loss.
-                    size = gen_backward(&pos, then);
-                    if (!size) {
+                    next_size = gen_backward(&pos, next_pos);
+                    if (!next_size) {
                         entry->state = ILLEGAL;
                         entry->iter = 0;
                         break;
                     }
-                    for (uint8_t j = 0; j < size; ++j) {
-                        uint64_t index = get_index(&then[j]);
-                        Entry *new_entry = &all[index];
+                    for (uint8_t i = 0; i < next_size; ++i) {
+                        Index new_index = get_index(&next_pos[i]);
+                        Entry *new_entry = &entries[new_index];
+                        //                        if (new_index >= MAX_INDEX) {
+                        //                            cout << pretty_position(&pos) << endl
+                        //                                 << endl
+                        //                                 << pretty_position(&next_pos[i]) << endl;
+                        //                            from_index(index);
+                        //                            get_index(&next_pos[i]);
+                        //                            abort();
+                        //                        }
                         if (new_entry->state != ILLEGAL &&
                             (new_entry->state != WIN || new_entry->iter > iter + 1)) {
                             new_entry->state = WIN;
@@ -99,17 +144,25 @@ void create_bitbase() {
                     }
                     break;
                 case WIN:
-                    pos = from_index(i);
+                    pos = from_index(index);
                     assert(pos.masters);
-                    size = gen_backward(&pos, then);
-                    if (!size) {
+                    next_size = gen_backward(&pos, next_pos);
+                    if (!next_size) {
                         entry->state = ILLEGAL;
                         entry->iter = 0;
                         break;
                     }
-                    for (int j = 0; j < size; ++j) {
-                        uint64_t index = get_index(&then[j]);
-                        Entry *new_entry = &all[index];
+                    for (uint8_t i = 0; i < next_size; ++i) {
+                        Index new_index = get_index(&next_pos[i]);
+                        Entry *new_entry = &entries[new_index];
+                        //                        if (new_index >= MAX_INDEX) {
+                        //                            cout << pretty_position(&pos) << endl
+                        //                                 << endl
+                        //                                 << pretty_position(&next_pos[i]) << endl;
+                        //                            from_index(index);
+                        //                            get_index(&next_pos[i]);
+                        //                            abort();
+                        //                        }
                         if (new_entry->state != ILLEGAL && new_entry->state != WIN) {
                             new_entry->state = SELF_LOSS;
                             new_entry->iter = iter + 1;
@@ -118,14 +171,25 @@ void create_bitbase() {
                     }
                     break;
                 case SELF_LOSS:
-                    pos = from_index(i);
+                    pos = from_index(index);
                     assert(pos.masters);
-                    size = gen_forward(&pos, then);
-                    assert(size);
+                    next_size = gen_forward(&pos, next_pos);
+                    assert(next_size);
                     entry->iter = 0;
-                    for (int j = 0; j < size; ++j) {
-                        uint64_t index = get_index(&then[j]);
-                        Entry *new_entry = &all[index];
+                    for (uint8_t i = 0; i < next_size; ++i) {
+                        Index new_index = get_index(&next_pos[i]);
+                        Entry *new_entry = &entries[new_index];
+                        //                        if (new_index >= MAX_INDEX || new_entry->state == ILLEGAL) {
+                        //                            cout << pretty_position(&pos) << endl
+                        //                                 << endl
+                        //                                 << pretty_position(&next_pos[i]) << endl
+                        //                                 << is_legal(&next_pos[i]) << endl
+                        //                                 << endl;
+                        //                            is_legal(&next_pos[i]);
+                        //                            from_index(index);
+                        //                            get_index(&next_pos[i]);
+                        //                            abort();
+                        //                        }
                         assert(new_entry->state != ILLEGAL);
                         if (new_entry->state != WIN) {
                             entry->iter = 0;
@@ -135,10 +199,12 @@ void create_bitbase() {
                         }
                     }
                     if (entry->iter) {
-                        change_made = true;
                         entry->state = LOSS;
-                        if (entry->iter == iter)
+                        if (entry->iter == iter) {
                             goto loss;
+                        } else if (entry->iter > iter) {
+                            change_made = true;
+                        }
                     } else {
                         entry->state = UNKNOWN;
                     }
@@ -147,17 +213,32 @@ void create_bitbase() {
                     break;
             }
         }
+        if (iter == 255) {
+            cout << "Had to exit early" << endl;
+            break;
+        }
     }
 
     double duration = (clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
-    std::string states[] = {"Draw", "Illegal", "Win", "Loss", "Self-Loss"};
+    string states[] = {"Draw", "Illegal", "Win", "Loss", "Self-Loss"};
 
     uint8_t greatest_iter = 0;
-    for (uint64_t i = 0; i < MAX_INDEX; ++i)
-        greatest_iter = std::max(greatest_iter, all[i].iter);
-    for (uint64_t i = 0; i < MAX_INDEX; ++i) {
-        Entry *entry = &all[i];
+    for (Index index = 0; index < MAX_INDEX; ++index)
+        greatest_iter = max(greatest_iter, entries[index].iter);
+    for (Index index = 0; index < MAX_INDEX; ++index) {
+        //    Position pos = {};
+        //    pos.turn = false;
+        //    pos.pieces[WHITE] = (1u << 5) | (1u << 12);
+        //    pos.pieces[BLACK] = (1u << 14) | (1u << 21);
+        //    pos.masters = (1u << 5) | (1u << 14);
+        //    pos.cards |= (1ull << BOAR);
+        //    pos.cards |= (1ull << OX);
+        //    pos.cards |= (65536ull << CRANE);
+        //    pos.cards |= (65536ull << HORSE);
+        //    pos.cards |= (4294967296ull << EEL);
+        //    Index index = get_index(&pos);
+        Entry *entry = &entries[index];
         assert(entry->state != SELF_LOSS);
         if (entry->iter < greatest_iter)
             continue;
@@ -168,78 +249,83 @@ void create_bitbase() {
                 break;
             case LOSS:
             case WIN:
-                Position pos = from_index(i);
-                //                while (true) {
-                std::cout << std::endl
-                          << "Index: " << i << std::endl
-                          << pretty_position(&pos) << std::endl
-                          << states[all[i].state]
-                          << (all[i].iter != 0
-                                      ? " in " + std::to_string(all[i].iter) + " plies"
-                                      : "")
-                          << std::endl;
-                //                    if (game_over(&pos))
-                //                        break;
-                //                    size = gen_forward(&pos, then);
-                //                    uint64_t windex;
-                //                    for (int j = 0; j < size; ++j) {
-                //                        uint64_t index = get_index(&then[j]);
-                //                        std::cout << states[all[index].state] << " ("
-                //                                  << std::to_string(all[index].iter)
-                //                                  << (j == size - 1 ? ")" : "), ");
-                //                        if (!j || all[i].iter - 1 == all[index].iter) {
-                //                            windex = index;
-                //                        }
-                //                    }
-                //                    std::cout << std::endl;
-                //                    pos = from_index(windex);
-                //                    i = windex;
+                Position pos = from_index(index);
+                //            while (true) {
+                cout << endl
+                     << "Index: " << index << endl
+                     << pretty_position(&pos) << endl
+                     << states[entries[index].state]
+                     << (entries[index].iter != 0
+                                 ? " in " + to_string(entries[index].iter) + " plies"
+                                 : "")
+                     << endl;
+                //                if (is_game_over(&pos))
+                //                    break;
+                //                next_size = gen_forward(&pos, next_pos);
+                //                Index next_found_index = 0;
+                //                for (uint8_t i = 0; i < next_size; ++i) {
+                //                    Index next_index = get_index(&next_pos[i]);
+                //                    cout << states[entries[next_index].state] << " ("
+                //                         << to_string(entries[next_index].iter) << (i == next_size - 1 ? ")" : "), ");
+                //                    if (entries[index].iter - 1 == entries[next_index].iter)
+                //                        next_found_index = next_index;
                 //                }
-                //                abort();
+                //                cout << endl;
+                //                if (!next_found_index) {
+                //                    cout << "Very very bad" << endl;
+                //                    abort();
+                //                } else {
+                //                    index = next_found_index;
+                //                    pos = from_index(index);
+                //                }
+                //            }
+                //            abort();
         }
     }
-    std::cout << std::endl;
+    cout << endl;
 
-    std::cout << "For the side to move:" << std::endl;
-    std::uint64_t running_count[] = {0, 0, 0, 0, 0};
-    for (int iter = 0; true; ++iter) {
-        std::uint64_t count[] = {0, 0, 0, 0, 0};
-        for (uint64_t i = 0; i < MAX_INDEX; ++i) {
-            Entry *entry = &all[i];
-            if (entry->iter != iter)
-                continue;
-            ++count[entry->state];
-        }
-        uint64_t total = 0;
-        for (uint8_t state = UNKNOWN; state <= SELF_LOSS; ++state) {
-            total += count[state];
-            running_count[state] += count[state];
-        }
-        if (!total)
-            break;
-        std::cout << total << " boards at " << iter << " plies: " << count[WIN]
-                  << " wins, " << count[UNKNOWN] << " draws, " << count[LOSS] << " losses"
-                  << std::endl;
-    }
+    //    cout << "For the side to move:" << endl;
+    //    uint64_t running_count[] = {0, 0, 0, 0, 0};
+    //    for (int iter = 0; true; ++iter) {
+    //        uint64_t count[] = {0, 0, 0, 0, 0};
+    //        for (Index i = 0; i < MAX_INDEX; ++i) {
+    //            Entry *entry = &entries[i];
+    //            if (entry->iter != iter)
+    //                continue;
+    //            ++count[entry->state];
+    //        }
+    //        uint64_t total = 0;
+    //        for (uint8_t state = UNKNOWN; state <= SELF_LOSS; ++state) {
+    //            total += count[state];
+    //            running_count[state] += count[state];
+    //        }
+    //        if (!total)
+    //            break;
+    //        cout << total << " boards at " << iter << " plies: " << count[WIN] << " wins, "
+    //             << count[UNKNOWN] << " draws, " << count[LOSS] << " losses" << endl;
+    //    }
+    //    cout << endl;
+    //    for (uint8_t state = UNKNOWN; state <= SELF_LOSS; ++state)
+    //        cout << states[state] << ": " << running_count[state] << endl;
+    //    cout << endl;
 
-    std::cout << std::endl;
-    for (uint8_t state = UNKNOWN; state <= SELF_LOSS; ++state)
-        std::cout << states[state] << ": " << running_count[state] << std::endl;
+    printf("Took %.6s seconds\n", to_string(duration).c_str());
 
-    printf("\nTook %.6s seconds\n", std::to_string(duration).c_str());
-
-    delete[] all;
+    delete[] entries;
 }
 
-uint64_t get_max_index() {
-    uint64_t max = SQUARE_NUM * (SQUARE_NUM + 1) - 1;  // Masters.
-    for (int _ = 0; _ < STUDENT_MEN; ++_)
-        max = (max * (SQUARE_NUM + 1) + SQUARE_NUM) * 2 + 1;  // Students.
-    return SETUPS_NUM * (max + 1) - 1;                        // Cards.
+Index get_max_index() {
+    Index max = SQUARE_NUM * (SQUARE_NUM + 1) - 1;  // Masters.
+    for (uint8_t men = 0; men < STUDENT_MEN; ++men)
+        max = (max * (SQUARE_NUM + 1 - men) + SQUARE_NUM - men) * 2 + 1;  // Students.
+    return SETUPS_NUM * (max + 1) - 1;                                    // Cards.
 }
 
-bool legal(Position *pos) {
+bool is_legal(Position *pos) {
+    // Fast fail (produced when an illegal position is found by from_index).
     if (!pos->masters)
+        return false;
+    if ((pos->pieces[WHITE] | pos->pieces[BLACK] | pos->masters) & 4261412864u)
         return false;
     if (pos->pieces[WHITE] & pos->pieces[BLACK])
         return false;
@@ -247,6 +333,7 @@ bool legal(Position *pos) {
         return false;
     if (pos->masters & pos->pieces[pos->turn] & (pos->turn ? 4u : 4194304u))
         return false;
+    // Rare case in which our last move must've captured the opponent's king on our home.
     if (!(pos->pieces[pos->turn] & pos->masters) &&
         (pos->masters & (pos->turn ? 4u : 4194304u)) &&
         pos->masters == pos->pieces[!pos->turn])
@@ -254,16 +341,10 @@ bool legal(Position *pos) {
     if (STUDENT_MEN <
         __builtin_popcount((pos->pieces[WHITE] | pos->pieces[BLACK]) ^ pos->masters))
         return false;
-    //    if (__builtin_popcountll(pos->cards & 65535u) != 2)
-    //        return false;
-    //    if (__builtin_popcountll(pos->cards & 4294901760u) != 2)
-    //        return false;
-    //    if (__builtin_popcount(pos->cards >> 32) != 1)
-    //        return false;
     return true;
 }
 
-bool game_over(Position *pos) {
+bool is_game_over(Position *pos) {
     if (!(pos->pieces[pos->turn] & pos->masters))
         return true;
     if (pos->masters & pos->pieces[!pos->turn] & (pos->turn ? 4194304u : 4u))
@@ -271,8 +352,8 @@ bool game_over(Position *pos) {
     return false;
 }
 
-uint64_t get_index(Position *pos) {
-    uint64_t index;
+Index get_index(Position *pos) {
+    Index index;
     if (pos->turn) {
         // Masters.
         Bitboard bitboard = (pos->masters & pos->pieces[BLACK]);
@@ -283,15 +364,17 @@ uint64_t get_index(Position *pos) {
         // Students.
         if (STUDENT_MEN) {
             bitboard = ((pos->pieces[WHITE] | pos->pieces[BLACK]) ^ pos->masters);
+            uint8_t prev_sq = SQUARE_NUM;
             for (uint8_t men = 0; men < STUDENT_MEN; ++men) {
                 if (!bitboard) {
-                    index = (index * (SQUARE_NUM + 1) + SQUARE_NUM) * 2;
+                    index = (index * (SQUARE_NUM + 1 - men) + SQUARE_NUM - men) * 2;
                     continue;
                 }
-                uint8_t sq = __builtin_ctz(bitboard);
-                index = (index * (SQUARE_NUM + 1) + (SQUARE_NUM - 1 - sq));
+                uint8_t sq = (31 - __builtin_clz(bitboard));
+                index = (index * (SQUARE_NUM + 1 - men) - sq + prev_sq - 1);
                 index = (index * 2 + ((pos->pieces[WHITE] & (1u << sq)) != 0));
                 bitboard ^= (1u << sq);
+                prev_sq = sq;
             }
         }
     } else {
@@ -304,15 +387,17 @@ uint64_t get_index(Position *pos) {
         // Students.
         if (STUDENT_MEN) {
             bitboard = ((pos->pieces[WHITE] | pos->pieces[BLACK]) ^ pos->masters);
+            int8_t prev_sq = -1;
             for (uint8_t men = 0; men < STUDENT_MEN; ++men) {
                 if (!bitboard) {
-                    index = (index * (SQUARE_NUM + 1) + SQUARE_NUM) * 2;
+                    index = (index * (SQUARE_NUM + 1 - men) + SQUARE_NUM - men) * 2;
                     continue;
                 }
                 uint8_t sq = __builtin_ctz(bitboard);
-                index = (index * (SQUARE_NUM + 1) + sq);
+                index = (index * (SQUARE_NUM + 1 - men) + sq - prev_sq - 1);
                 index = (index * 2 + ((pos->pieces[BLACK] & (1u << sq)) != 0));
                 bitboard ^= (1u << sq);
+                prev_sq = sq;
             }
         }
     }
@@ -336,7 +421,7 @@ uint64_t get_index(Position *pos) {
     return index;
 }
 
-Position from_index(uint64_t index) {
+Position from_index(Index index) {
     Position pos = {};
     pos.turn = false;
 
@@ -369,16 +454,34 @@ Position from_index(uint64_t index) {
 
     // Students.
     if (STUDENT_MEN) {
-        for (uint8_t men = 0; men < STUDENT_MEN; ++men) {
-            uint8_t student = (index % (2 * (SQUARE_NUM + 1)));
-            if (student / 2 != SQUARE_NUM) {
-                pos.pieces[student % 2] |= (1u << (student / 2));
-            } else if (student % 2) {
+        uint8_t furthest_sq = 0;
+        for (int8_t men = (STUDENT_MEN - 1); men >= 0; --men) {
+            uint8_t student = (index % (2 * (SQUARE_NUM + 1 - men)));
+            uint8_t sq = (student / 2);
+            bool player = (student % 2);
+            if (sq != SQUARE_NUM - men) {
+                if (men)
+                    ++sq;
+                if (furthest_sq + sq >= SQUARE_NUM) {
+                    pos.masters = 0;
+                    return pos;  // Illegal.
+                }
+                furthest_sq += sq;
+                if (player) {
+                    pos.pieces[BLACK] |= 1u;
+                } else {
+                    pos.pieces[WHITE] |= 1u;
+                }
+                pos.pieces[BLACK] <<= sq;
+                pos.pieces[WHITE] <<= sq;
+            } else if (player || pos.pieces[WHITE] || pos.pieces[BLACK]) {
                 pos.masters = 0;
                 return pos;  // Illegal.
             }
-            index /= 2 * (SQUARE_NUM + 1);
+            index /= 2 * (SQUARE_NUM + 1 - men);
         }
+        //        assert((pos.pieces[WHITE] & pos.pieces[BLACK]) == pos.pieces[BLACK]);
+        //        pos.pieces[WHITE] ^= pos.pieces[BLACK];
     }
 
     // Masters.
@@ -460,18 +563,25 @@ uint8_t gen_backward(Position *pos, Position *backward) {
     while (pieces) {
         uint8_t from = __builtin_ctz(pieces);
         Bitboard from_mask = (1u << from);
-        bool master_move = (pos->masters & from_mask);
+
+        // If the opponent has no king, we cannot undo a move "from" our home.
         if (!(pos->masters & ~pieces) && (from_mask & (pos->turn ? 4u : 4194304u))) {
             pieces ^= from_mask;
             continue;
         }
+
         uint64_t cards = pos->cards;
         if (!pos->turn)
             cards >>= CARD_NUM;
         Bitboard card_squares =
                 MOVE_TABLES[(side_index + from) * PLAYERS_NUM + pos->turn] & targets;
+
+        bool master_move = (pos->masters & from_mask);
+
+        // Our king cannot move backwards onto the opponent's home.
         if (master_move)
             card_squares &= (pos->turn ? 29360127u : 33554427u);
+
         for (uint8_t card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
             uint64_t card = __builtin_ctz(cards);
             Bitboard squares = card_squares;
@@ -530,8 +640,8 @@ uint8_t gen_backward(Position *pos, Position *backward) {
     return total;
 }
 
-std::string pretty_position(Position *pos) {
-    std::string str = "  +---+---+---+---+---+\n";
+string pretty_position(Position *pos) {
+    string str = "  +---+---+---+---+---+\n";
     for (int rank = (BOARD_LENGTH - 1); rank >= 0; --rank) {
         for (int file = 0; file < BOARD_LENGTH; ++file) {
             Bitboard mask = (1u << (file + rank * BOARD_LENGTH));
@@ -551,7 +661,7 @@ std::string pretty_position(Position *pos) {
             } else {
                 character = '.';
             }
-            str += (!file ? std::to_string(rank + 1) + " | " : " | ");
+            str += (!file ? to_string(rank + 1) + " | " : " | ");
             str += character;
         }
         str += " | \n  +---+---+---+---+---+\n";

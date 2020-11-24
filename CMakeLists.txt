@@ -28,8 +28,8 @@ add_executable(
         src/search.h
         src/perft.cpp
         src/perft.h
-        src/bitbase.cpp
-        src/bitbase.h
+        src/tb/tb_gen.cpp
+        src/tb/tb_gen.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)

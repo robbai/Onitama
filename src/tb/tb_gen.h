@@ -1,8 +1,10 @@
-#ifndef ONITAMA_BITBASE_H
-#define ONITAMA_BITBASE_H
+#ifndef ONITAMA_TB_GEN_H
+#define ONITAMA_TB_GEN_H
 
 #include <cstdint>
-#include "types.h"
+#include "../types.h"
+
+typedef uint64_t Index;
 
 enum State : uint8_t { UNKNOWN, ILLEGAL, WIN, LOSS, SELF_LOSS };
 
@@ -18,6 +20,6 @@ struct Position {
     uint64_t cards;
 };
 
-void create_bitbase();
+void generate_tb();
 
-#endif  // ONITAMA_BITBASE_H
+#endif  // ONITAMA_TB_GEN_H
