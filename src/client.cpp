@@ -8,6 +8,7 @@
 #include "easywsclient.hpp"
 #include "util.h"
 #include "search.h"
+#include "tb/tb_probe.h"
 
 using easywsclient::WebSocket;
 
@@ -104,6 +105,10 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
         else if (character == '4')
             board.pieces[BLACK][MASTER] |= 1u << square;
     }
+
+    // Setup and generate tablebase.
+    if (doc["moves"].GetArray().Empty())
+        setup_and_generate_tb(&board);
 
     std::cout << std::endl << pretty_board(&board) << std::endl;
 

@@ -12,11 +12,14 @@
 #include "move_gen.h"
 #include "move_tables.h"
 #include "search.h"
+#include "tb/tb_gen.h"
+#include "tb/tb_probe.h"
 
 constexpr int MIN_EVAL = -1000, TEMPO = 3, WINDOW = 6;
 
 uint8_t root_move_count = 0;
 uint64_t nodes = 0;
+uint64_t tbhits = 0;
 
 Line pv_line;
 
@@ -91,12 +94,28 @@ int eval(Board *board) {
     return eval;
 }
 
-int search(Board *board, int depth, int alpha, int beta, int ply, bool following_pv,
-           Line *curr_line) {
+int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
+           bool following_pv, Line *curr_line) {
     // Leaf.
     if (board->game_over()) {
         ++nodes;
         return MIN_EVAL + ply;
+    }
+    if (check_tb) {
+        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
+                                                   board->pieces[BLACK][STUDENT]);
+        if (students_left <= Tablebase::STUDENT_MEN) {
+            Entry entry = probe_tb(board);
+            ++tbhits;
+            switch (entry.state) {
+                case WIN:
+                    return -MIN_EVAL - ply - entry.iter;
+                case LOSS:
+                    return MIN_EVAL + ply + entry.iter;
+                default:
+                    return 0;
+            }
+        }
     }
     if (depth == 0)
         return q_search(board, alpha, beta, ply);
@@ -119,7 +138,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool following
 
     // IID ordering.
     if (depth > 4) {
-        search(board, depth / 4, alpha, beta, ply, following_pv, &line);
+        search(board, depth / 4, alpha, beta, ply, false, following_pv, &line);
         for (int i = 0; i < size; ++i) {
             if (moves[i] == line.moves[0]) {
                 std::swap(moves[0], moves[i]);
@@ -133,8 +152,8 @@ move_loop:
     for (int i = 0; i < size; ++i) {
         const Move move = moves[i];
         make_move(board, move);
-        int value =
-                -search(board, depth - 1, -beta, -alpha, ply + 1, following_pv, &line);
+        int value = -search(board, depth - 1, -beta, -alpha, ply + 1,
+                            MoveBits::capture(move) || !ply, following_pv, &line);
         undo_move(board, move);
 
         if (value >= beta)
@@ -196,13 +215,14 @@ Move start_search(Board *board) {
     std::cout << "Found PV: [" << verify_pv(board, &pv_line, pv_line.length) << "]"
               << std::endl;
     nodes = 0;
+    tbhits = 0;
     clock_t start = clock();
     int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
     // Iterative deepening.
     while (depth <= MAX_DEPTH) {
         Line line;
-        int value = search(board, depth, alpha, beta, 0, pv_line.length, &line);
+        int value = search(board, depth, alpha, beta, 0, false, pv_line.length, &line);
 
         double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
@@ -221,15 +241,16 @@ Move start_search(Board *board) {
 
             // Output.
             std::string value_str;
-            if (mate_plies > MAX_DEPTH) {
+            if (mate_plies > MAX_DEPTH + 255) {
                 value_str = std::to_string(value);
             } else {
                 int mate_depth =
                         static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
                 value_str = "#" + std::to_string(mate_depth);
             }
-            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, %.3fs, PV = [%s]\n",
-                   depth, value_str.c_str(), nodes, elapsed,
+            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, %.3fs, "
+                   "PV = [%s]\n",
+                   depth, value_str.c_str(), nodes, tbhits, elapsed,
                    verify_pv(board, &pv_line, depth).c_str());
 
             // End search by mate detection.
@@ -239,7 +260,7 @@ Move start_search(Board *board) {
         }
 
         // End search by timeout.
-        if (depth > 1 && elapsed > 6)
+        if (depth > 1 && elapsed > 1)
             break;
     }
     return pv_line.moves[0];
