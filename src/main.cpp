@@ -1,8 +1,13 @@
 #include "move_tables.h"
-#include "tb/tb_gen.h"
+#include "client.h"
 
 int main() {
     init_move_tables();
 
-    generate_tb();
+    std::string match_id;
+    std::cout << "Match ID:";
+    std::cin >> match_id;
+
+    Client client(match_id);
+    return client.loop();
 }

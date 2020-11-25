@@ -4,6 +4,13 @@
 #include <cstdint>
 #include "../types.h"
 
+namespace Tablebase {
+    // Card list.
+    extern Card CARD_LIST[CARDS_EACH_NUM * PLAYERS_NUM + 1];
+    // Students.
+    extern uint8_t STUDENT_MEN;
+}  // namespace Tablebase
+
 typedef uint64_t Index;
 
 enum State : uint8_t { UNKNOWN, ILLEGAL, WIN, LOSS, SELF_LOSS };
@@ -20,6 +27,8 @@ struct Position {
     uint64_t cards;
 };
 
-void generate_tb();
+Entry *generate_tb();
+
+Index get_index(Position *pos);
 
 #endif  // ONITAMA_TB_GEN_H
