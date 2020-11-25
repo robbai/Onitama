@@ -19,7 +19,7 @@ constexpr int MIN_EVAL = -1000, TEMPO = 3, WINDOW = 6;
 
 uint8_t root_move_count = 0;
 uint64_t nodes = 0;
-uint64_t tbhits = 0;
+uint64_t tb_hits = 0;
 
 Line pv_line;
 
@@ -106,7 +106,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                                                    board->pieces[BLACK][STUDENT]);
         if (students_left <= Tablebase::STUDENT_MEN) {
             Entry entry = probe_tb(board);
-            ++tbhits;
+            ++nodes;
+            ++tb_hits;
             switch (entry.state) {
                 case WIN:
                     return -MIN_EVAL - ply - entry.iter;
@@ -119,6 +120,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     }
     if (depth == 0)
         return q_search(board, alpha, beta, ply);
+    ++nodes;
 
     Line line;
     Move *moves = ALL_MOVES[ply];
@@ -215,7 +217,7 @@ Move start_search(Board *board) {
     std::cout << "Found PV: [" << verify_pv(board, &pv_line, pv_line.length) << "]"
               << std::endl;
     nodes = 0;
-    tbhits = 0;
+    tb_hits = 0;
     clock_t start = clock();
     int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
@@ -250,7 +252,7 @@ Move start_search(Board *board) {
             }
             printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, %.3fs, "
                    "PV = [%s]\n",
-                   depth, value_str.c_str(), nodes, tbhits, elapsed,
+                   depth, value_str.c_str(), nodes, tb_hits, elapsed,
                    verify_pv(board, &pv_line, depth).c_str());
 
             // End search by mate detection.
