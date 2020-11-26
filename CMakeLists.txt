@@ -9,6 +9,14 @@ else ()
     add_definitions("-march=native -Ofast")
 endif ()
 
+# Produce version.cpp.
+ADD_CUSTOM_COMMAND(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
+        COMMAND ${CMAKE_COMMAND} -P
+        ${CMAKE_CURRENT_SOURCE_DIR}/version.cmake
+)
+
 add_executable(
         Onitama
         src/main.cpp
@@ -35,6 +43,8 @@ add_executable(
         src/tb/tb_gen.h
         src/tb/tb_probe.cpp
         src/tb/tb_probe.h
+        ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
+        src/version.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)

@@ -9,12 +9,14 @@
 #include "util.h"
 #include "search.h"
 #include "tb/tb_probe.h"
+#include "version.h"
 
 using easywsclient::WebSocket;
 
 const string SERVER_URL = "ws://litama.herokuapp.com";
 
-const string USERNAME = "robbai";
+const string USERNAME =
+        "robbai" + (GIT_BRANCH[0] == 0 ? "" : "-" + std::string(GIT_BRANCH));
 
 Turn parse_colour(const string colour) {
     return (Turn)(colour == "red");
