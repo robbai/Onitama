@@ -116,8 +116,10 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
     }
 
     // Setup and generate tablebase.
-    if (doc["moves"].GetArray().Empty())
+    if (!generated_tb) {
+        generated_tb = true;
         setup_and_generate_tb(&board);
+    }
 
     std::cout << std::endl << pretty_board(&board) << std::endl;
 
@@ -162,7 +164,6 @@ int Client::loop() {
     std::unique_ptr<WebSocket> ws(WebSocket::from_url(SERVER_URL));
 
     // Main loop.
-    end_loop = false;
     if (match_id.empty()) {
         send(ws, "create " + USERNAME);
     } else {
