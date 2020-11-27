@@ -27,8 +27,10 @@ class Client {
     bool end_loop;
     void send(std::unique_ptr<WebSocket> const &ws, string message);
     void handle_json(std::unique_ptr<WebSocket> const &unique_ptr, string json);
-    void receive_create(rapidjson::Document &doc);
-    void receive_join(rapidjson::Document &doc);
+    void receive_create(std::unique_ptr<WebSocket> const &unique_ptr,
+                        rapidjson::Document &doc);
+    void receive_join(std::unique_ptr<WebSocket> const &unique_ptr,
+                      rapidjson::Document &doc);
     void receive_state(std::unique_ptr<WebSocket> const &ws, rapidjson::Document &doc);
     void receive_move(rapidjson::Document &doc);
     void receive_spectate(rapidjson::Document &doc);
