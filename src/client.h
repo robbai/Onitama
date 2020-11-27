@@ -24,7 +24,7 @@ class Client {
     Board board;
     string match_id, token;
     Turn index;
-    bool end_loop;
+    bool end_loop = false, generated_tb = false;
     void send(std::unique_ptr<WebSocket> const &ws, string message);
     void handle_json(std::unique_ptr<WebSocket> const &unique_ptr, string json);
     void receive_create(std::unique_ptr<WebSocket> const &unique_ptr,
