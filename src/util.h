@@ -21,4 +21,6 @@ std::string pretty_board(Board *board);
 std::string move_string(Board *board, Move move);
 std::string to_lower(std::string string);
 
+bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to = 0);
+
 #endif  // ONITAMA_UTIL_H

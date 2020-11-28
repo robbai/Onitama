@@ -1,4 +1,6 @@
+#include <utility>
 #include <algorithm>
+
 #include "util.h"
 #include "move_bits.h"
 
@@ -69,4 +71,14 @@ std::string to_lower(std::string string) {
         return std::tolower(c);
     });
     return string;
+}
+
+bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to) {
+    for (uint8_t i = to; i < size; ++i) {
+        if (moves[i] == move) {
+            std::swap(moves[to], moves[i]);
+            return true;
+        }
+    }
+    return false;
 }

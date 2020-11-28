@@ -15,7 +15,7 @@ typedef uint64_t Index;
 
 enum State : uint8_t { UNKNOWN, ILLEGAL, WIN, LOSS, SELF_LOSS };
 
-struct Entry {
+struct TBEntry {
     uint8_t iter;
     State state;
 };
@@ -27,7 +27,7 @@ struct Position {
     uint64_t cards;
 };
 
-Entry *generate_tb();
+TBEntry *generate_tb();
 
 Index get_index(Position *pos);
 

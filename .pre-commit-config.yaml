@@ -28,5 +28,6 @@ repos:
             -build/header_guard,
             -whitespace/line_length,
             -runtime/references,
-            -runtime/string,"
+            -runtime/string,
+            -whitespace/braces,"
         ]

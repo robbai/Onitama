@@ -45,6 +45,10 @@ add_executable(
         src/tb/tb_probe.h
         ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
         src/version.h
+        src/tt/ttable.cpp
+        src/tt/ttable.h
+        src/tt/zobrist.cpp
+        src/tt/zobrist.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)

@@ -5,7 +5,7 @@
 #include "tb_gen.h"
 #include "../board.h"
 
-Entry probe_tb(Board *board);
+TBEntry probe_tb(Board *board);
 
 void setup_and_generate_tb(Board *board);
 
