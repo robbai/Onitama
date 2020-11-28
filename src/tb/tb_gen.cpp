@@ -50,15 +50,15 @@ uint8_t gen_forward(Position *pos, Position *forward);
 uint8_t gen_backward(Position *pos, Position *backward);
 string pretty_position(Position *pos);
 
-Entry *generate_tb() {
+TBEntry *generate_tb() {
     clock_t start = clock();
 
     // Populate.
     const Index MAX_INDEX = get_max_index();
     cout << "Array size: " << MAX_INDEX << endl;
-    Entry *entries = new Entry[MAX_INDEX];
+    TBEntry *entries = new TBEntry[MAX_INDEX];
     for (Index index = 0; index < MAX_INDEX; ++index) {
-        Entry *entry = &entries[index];
+        TBEntry *entry = &entries[index];
         entry->iter = 0;
         Position pos = from_index(index);
         if (is_legal(&pos)) {
@@ -77,7 +77,7 @@ Entry *generate_tb() {
         change_made = false;
         cout << "Iter: " << to_string(iter) << endl;
         for (Index index = 0; index < MAX_INDEX; ++index) {
-            Entry *entry = &entries[index];
+            TBEntry *entry = &entries[index];
             if (entry->iter != iter)
                 continue;
             Position pos;
@@ -94,7 +94,7 @@ Entry *generate_tb() {
                     }
                     for (uint8_t i = 0; i < next_size; ++i) {
                         Index new_index = get_index(&next_pos[i]);
-                        Entry *new_entry = &entries[new_index];
+                        TBEntry *new_entry = &entries[new_index];
                         if (new_entry->state != ILLEGAL &&
                             (new_entry->state != WIN || new_entry->iter > iter + 1)) {
                             new_entry->state = WIN;
@@ -114,7 +114,7 @@ Entry *generate_tb() {
                     }
                     for (uint8_t i = 0; i < next_size; ++i) {
                         Index new_index = get_index(&next_pos[i]);
-                        Entry *new_entry = &entries[new_index];
+                        TBEntry *new_entry = &entries[new_index];
                         if (new_entry->state != ILLEGAL && new_entry->state != WIN) {
                             new_entry->state = SELF_LOSS;
                             new_entry->iter = iter + 1;
@@ -130,7 +130,7 @@ Entry *generate_tb() {
                     entry->iter = 0;
                     for (uint8_t i = 0; i < next_size; ++i) {
                         Index new_index = get_index(&next_pos[i]);
-                        Entry *new_entry = &entries[new_index];
+                        TBEntry *new_entry = &entries[new_index];
                         assert(new_entry->state != ILLEGAL);
                         if (new_entry->state != WIN) {
                             entry->iter = 0;

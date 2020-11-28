@@ -3,11 +3,11 @@
 #include "tb_gen.h"
 
 
-Entry *entries;
+TBEntry *entries;
 
 Position to_position(Board *p_board);
 
-Entry probe_tb(Board *board) {
+TBEntry probe_tb(Board *board) {
     Position pos = to_position(board);
     Index index = get_index(&pos);
     return entries[index];

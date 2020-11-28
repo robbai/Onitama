@@ -10,6 +10,7 @@
 #include "search.h"
 #include "tb/tb_probe.h"
 #include "version.h"
+#include "tt/zobrist.h"
 
 using easywsclient::WebSocket;
 
@@ -114,6 +115,8 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
         else if (character == '4')
             board.pieces[BLACK][MASTER] |= 1u << square;
     }
+
+    set_hash(&board);
 
     // Setup and generate tablebase.
     if (!generated_tb) {

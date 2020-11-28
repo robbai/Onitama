@@ -15,7 +15,8 @@ class Board {
             {CARD_NONE, CARD_NONE}};  // Cards for both players.
     Card side_card = CARD_NONE;       // Card at the side.
     bool turn = WHITE;                // Turn to move.
-    uint8_t move_count = 0;
+    uint16_t move_count = 0;
+    Hash hash = 0;
 
     bool game_over();
     Board copy();

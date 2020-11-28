@@ -14,12 +14,15 @@
 #include "search.h"
 #include "tb/tb_gen.h"
 #include "tb/tb_probe.h"
+#include "tt/ttable.h"
+#include "tt/zobrist.h"
 
 constexpr int MIN_EVAL = -1000, TEMPO = 3, WINDOW = 6;
 
 uint8_t root_move_count = 0;
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
+uint64_t tt_hits = 0;
 
 Line pv_line;
 
@@ -96,87 +99,134 @@ int eval(Board *board) {
 
 int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
            bool following_pv, Line *curr_line) {
-    // Leaf.
+    int alpha_original = alpha;
+
+    // Terminal.
     if (board->game_over()) {
         ++nodes;
-        return MIN_EVAL + ply;
+        return MIN_EVAL + board->move_count;
     }
+
+    // Probe TB.
     if (check_tb) {
         uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
                                                    board->pieces[BLACK][STUDENT]);
         if (students_left <= Tablebase::STUDENT_MEN) {
-            Entry entry = probe_tb(board);
+            TBEntry entry = probe_tb(board);
             ++nodes;
             ++tb_hits;
             switch (entry.state) {
                 case WIN:
-                    return -MIN_EVAL - ply - entry.iter;
+                    return -MIN_EVAL - board->move_count - entry.iter;
                 case LOSS:
-                    return MIN_EVAL + ply + entry.iter;
+                    return MIN_EVAL + board->move_count + entry.iter;
                 default:
                     return 0;
             }
         }
     }
+
+    // Probe TT.
+    TTEntry *entry = TTABLE.probe(board);
+    uint32_t remaining_hash = (board->hash >> 32);
+    bool hash_match = (entry->remaining_hash == remaining_hash);
+    if ((ply || curr_line->length) && hash_match && entry->depth >= depth) {
+        ++tt_hits;
+        switch (entry->type) {
+            case EXACT:
+                ++nodes;
+                return entry->value;
+            case LOWER:
+                alpha = std::max(alpha, entry->value);
+                break;
+            case UPPER:
+                beta = std::min(beta, entry->value);
+                break;
+        }
+        if (alpha >= beta) {
+            ++nodes;
+            return entry->value;
+        }
+    }
+
+    // Leaf.
     if (depth == 0)
         return q_search(board, alpha, beta, ply);
+
     ++nodes;
 
     Line line;
     Move *moves = ALL_MOVES[ply];
     uint8_t size = gen_moves(board, moves);
 
-    // PV ordering.
+    // Move ordering.
+    uint8_t bump = 0;
     if (following_pv) {
-        following_pv = false;
-        for (int i = 0; i < size; ++i) {
-            if (moves[i] == pv_line.moves[ply]) {
-                std::swap(moves[0], moves[i]);
-                following_pv = true;
-                goto move_loop;
-            }
-        }
+        // PV ordering.
+        following_pv = bump_move(moves, size, pv_line.moves[ply]);
+        if (following_pv)
+            ++bump;
     }
-
-    // IID ordering.
-    if (depth > 4) {
+    if (entry->remaining_hash == remaining_hash) {
+        // TT ordering.
+        if (bump_move(moves, size, entry->move, bump))
+            ++bump;
+    }
+    if (depth > 4 && !bump) {
+        // IID ordering.
         search(board, depth / 4, alpha, beta, ply, false, following_pv, &line);
-        for (int i = 0; i < size; ++i) {
-            if (moves[i] == line.moves[0]) {
-                std::swap(moves[0], moves[i]);
-                break;
-            }
-        }
+        bump_move(moves, size, line.moves[0], bump);
     }
 
     // Move loop.
-move_loop:
-    for (int i = 0; i < size; ++i) {
+    Move best_move;
+    int best_value = MIN_EVAL;
+    for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
         make_move(board, move);
         int value = -search(board, depth - 1, -beta, -alpha, ply + 1,
                             MoveBits::capture(move) || !ply, following_pv, &line);
         undo_move(board, move);
 
-        if (value >= beta)
-            return beta;
-        if (value > alpha) {
-            alpha = value;
-            curr_line->moves[0] = move;
-            memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
-            curr_line->length = line.length + 1;
+        if (value > best_value) {
+            best_value = value;
+            best_move = move;
+            if (value > alpha) {
+                if (value >= beta)
+                    break;  // Cut-off.
+                alpha = value;
+                curr_line->moves[0] = move;
+                memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
+                curr_line->length = line.length + 1;
+            }
         }
     }
 
-    return alpha;
+    // Store in TT.
+    if (!hash_match || entry->depth < depth) {
+        entry->value = best_value;
+        if (best_value <= alpha_original) {
+            entry->type = UPPER;
+        } else if (best_value >= beta) {
+            entry->type = LOWER;
+        } else {
+            entry->type = EXACT;
+        }
+        entry->depth = depth;
+        entry->remaining_hash = remaining_hash;
+        entry->move = best_move;
+        entry->value = best_value;
+    }
+
+    return best_value;
 }
 
 int q_search(Board *board, int alpha, int beta, int ply) {
     ++nodes;
 
-    // Leaf.
+    // Terminal.
     if (board->game_over())
-        return MIN_EVAL + ply;
+        return MIN_EVAL + board->move_count;
 
     // Evaluate.
     int value = eval(board) * (board->turn ? -1 : 1);
@@ -192,7 +242,7 @@ int q_search(Board *board, int alpha, int beta, int ply) {
     uint8_t size = gen_moves(
             board, moves,
             (board->pieces[!board->turn][STUDENT] | board->pieces[!board->turn][MASTER]));
-    for (int i = 0; i < size; ++i) {
+    for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
         make_move(board, move);
         value = -q_search(board, -beta, -alpha, ply + 1);
@@ -218,6 +268,7 @@ Move start_search(Board *board) {
               << std::endl;
     nodes = 0;
     tb_hits = 0;
+    tt_hits = 0;
     clock_t start = clock();
     int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
@@ -239,7 +290,7 @@ Move start_search(Board *board) {
             if (line.moves[0] != pv_line.moves[0] || line.length > pv_line.length)
                 pv_line = line;
 
-            int mate_plies = std::abs(MIN_EVAL + std::abs(value));
+            int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
 
             // Output.
             std::string value_str;
@@ -250,9 +301,10 @@ Move start_search(Board *board) {
                         static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
                 value_str = "#" + std::to_string(mate_depth);
             }
-            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, %.3fs, "
+            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, TT-hits "
+                   "= %8llu, %.3fs, "
                    "PV = [%s]\n",
-                   depth, value_str.c_str(), nodes, tb_hits, elapsed,
+                   depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
                    verify_pv(board, &pv_line, depth).c_str());
 
             // End search by mate detection.
