@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <string>
-#include <memory>
 #include <sstream>
 
 #include "easywsclient.hpp"
@@ -31,12 +30,12 @@ Card parse_card(const string card_name) {
     return CARD_NONE;
 }
 
-void Client::send(std::unique_ptr<WebSocket> const &ws, string message) {
+void Client::send(string message) {
     std::cout << "< " << message << std::endl;
     ws->send(message);
 }
 
-void Client::handle_json(std::unique_ptr<WebSocket> const &ws, string json) {
+void Client::handle_json(string json) {
     // Parse JSON.
     rapidjson::Document doc;
     doc.Parse(json.c_str());
@@ -44,11 +43,11 @@ void Client::handle_json(std::unique_ptr<WebSocket> const &ws, string json) {
     const string type = doc["messageType"].GetString();
     std::cout << "> " << type << std::endl;
     if (type == "create")
-        receive_create(ws, doc);
+        receive_create(doc);
     else if (type == "join")
-        receive_join(ws, doc);
+        receive_join(doc);
     else if (type == "state")
-        receive_state(ws, doc);
+        receive_state(doc);
     else if (type == "move")
         receive_move(doc);
     else if (type == "spectate")
@@ -57,31 +56,26 @@ void Client::handle_json(std::unique_ptr<WebSocket> const &ws, string json) {
         std::cerr << "Unknown response: " << json << std::endl;
 }
 
-void Client::receive_create(std::unique_ptr<WebSocket> const &ws,
-                            rapidjson::Document &doc) {
+void Client::receive_create(rapidjson::Document &doc) {
     if (match_id.empty()) {
         match_id = doc["matchId"].GetString();
         std::cout << "Match ID: " << match_id << std::endl;
-        send(ws, "spectate " + match_id);
+        send("spectate " + match_id);
     }
     index = (Turn) doc["index"].GetInt();
     token = doc["token"].GetString();
 }
 
-void Client::receive_join(std::unique_ptr<WebSocket> const &ws,
-                          rapidjson::Document &doc) {
-    return receive_create(ws, doc);
+void Client::receive_join(rapidjson::Document &doc) {
+    return receive_create(doc);
 }
 
-void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
-                           rapidjson::Document &doc) {
-    // Skip parsing if not in progress or ended.
-    if (!std::strcmp(doc["gameState"].GetString(), "waiting for player"))
-        return;
-
-    // Simply exit if the game is over.
-    if (std::strcmp(doc["winner"].GetString(), "none")) {
-        end_loop = true;
+void Client::receive_state(rapidjson::Document &doc) {
+    // Skip parsing if not in progress.
+    if (std::strcmp(doc["gameState"].GetString(), "in progress")) {
+        // Simply exit if the game is over.
+        if (!std::strcmp(doc["gameState"].GetString(), "ended"))
+            end_loop = true;
         return;
     }
 
@@ -139,7 +133,7 @@ void Client::receive_state(std::unique_ptr<WebSocket> const &ws,
                 break;
             }
         }
-        send(ws, "move " + match_id + " " + token + " " + move_message);
+        send("move " + match_id + " " + token + " " + move_message);
     }
 
     std::cout << std::endl;
@@ -164,19 +158,19 @@ int Client::loop() {
         return 1;
     }
 #endif
-    std::unique_ptr<WebSocket> ws(WebSocket::from_url(SERVER_URL));
+    ws = WebSocket::from_url(SERVER_URL);
 
     // Main loop.
     if (match_id.empty()) {
-        send(ws, "create " + USERNAME);
+        send("create " + USERNAME);
     } else {
-        send(ws, "join " + match_id + " " + USERNAME);
-        send(ws, "spectate " + match_id);
+        send("join " + match_id + " " + USERNAME);
+        send("spectate " + match_id);
     }
     while (ws->getReadyState() != WebSocket::CLOSED && !end_loop) {
         ws->poll(-1);
         ws->dispatch([&](const std::string &json) {
-            handle_json(ws, json);
+            handle_json(json);
         });
     }
 
