@@ -18,7 +18,6 @@
 
 constexpr int MIN_EVAL = -1000, WINDOW = 6;
 
-uint8_t root_move_count = 0;
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
 uint64_t tt_hits = 0;
@@ -219,13 +218,7 @@ int q_search(Board *board, int alpha, int beta, int ply) {
 
 Move start_search(Board *board) {
     // Setup.
-    uint8_t moves_made = (board->move_count - root_move_count);
-    root_move_count += moves_made;
-    pv_line.length -= moves_made;
-    for (int i = 0; i < pv_line.length; ++i)
-        pv_line.moves[i] = pv_line.moves[i + moves_made];
-    std::cout << "Found PV: [" << verify_pv(board, &pv_line, pv_line.length) << "]"
-              << std::endl;
+    pv_line = {};
     nodes = 0;
     tb_hits = 0;
     tt_hits = 0;
@@ -247,8 +240,7 @@ Move start_search(Board *board) {
             beta = value + WINDOW;
 
             // Replace PV.
-            if (line.moves[0] != pv_line.moves[0] || line.length > pv_line.length)
-                pv_line = line;
+            pv_line = line;
 
             int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
 

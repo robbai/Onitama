@@ -110,6 +110,8 @@ void Client::receive_state(rapidjson::Document &doc) {
             board.pieces[BLACK][MASTER] |= 1u << square;
     }
 
+    board.move_count = doc["moves"].GetArray().Size();
+
     set_hash(&board);
 
     // Setup and generate tablebase.
