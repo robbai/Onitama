@@ -10,14 +10,13 @@
 #include "make_move.h"
 #include "move_bits.h"
 #include "move_gen.h"
-#include "move_tables.h"
 #include "search.h"
 #include "tb/tb_gen.h"
 #include "tb/tb_probe.h"
 #include "tt/ttable.h"
-#include "tt/zobrist.h"
+#include "evaluate.h"
 
-constexpr int MIN_EVAL = -1000, TEMPO = 3, WINDOW = 6;
+constexpr int MIN_EVAL = -1000, WINDOW = 6;
 
 uint8_t root_move_count = 0;
 uint64_t nodes = 0;
@@ -56,45 +55,6 @@ std::string verify_pv(Board *board, Line *line, int depth) {
     line->length = count;
 
     return pv.substr(0, pv.length() - 2);
-}
-
-int eval(Board *board) {
-    int eval = __builtin_popcount(board->pieces[0][STUDENT] | board->pieces[0][MASTER]) -
-               __builtin_popcount(board->pieces[1][STUDENT] | board->pieces[1][MASTER]);
-    eval *= 30;
-
-    for (int turn = 0; turn < PLAYERS_NUM; ++turn) {
-        Bitboard squares = 0;
-        Bitboard pieces = board->pieces[turn][STUDENT] | board->pieces[turn][MASTER];
-        Bitboard targets = ~pieces;
-        while (pieces != 0) {
-            uint32_t mask = pieces & -pieces;
-
-            // Iterate through cards.
-            for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-                squares |= MOVE_TABLES[(board->cards[turn][card_index] * SQUARE_NUM +
-                                        __builtin_ctz(mask)) *
-                                               PLAYERS_NUM +
-                                       turn] &
-                           targets;
-            }
-
-            pieces ^= mask;
-        }
-        if (turn) {
-            eval -= __builtin_popcount(squares);
-        } else {
-            eval += __builtin_popcount(squares);
-        }
-    }
-
-    if (board->turn) {
-        eval -= TEMPO;
-    } else {
-        eval += TEMPO;
-    }
-
-    return eval;
 }
 
 int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
@@ -229,7 +189,7 @@ int q_search(Board *board, int alpha, int beta, int ply) {
         return MIN_EVAL + board->move_count;
 
     // Evaluate.
-    int value = eval(board) * (board->turn ? -1 : 1);
+    int value = evaluate(board) * (board->turn ? -1 : 1);
     if (value >= beta)
         return beta;
     if (value > alpha)
