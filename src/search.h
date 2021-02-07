@@ -6,7 +6,9 @@
 
 constexpr uint8_t MAX_DEPTH = 30;
 
-Move start_search(Board *board);
+Move start_search(Board *board, bool silent = false, float max_time = 1);
+
+Board get_pv_leaf(Board board);
 
 struct Line {
     int length = 0;         // Number of moves in the line.

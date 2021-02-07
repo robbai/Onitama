@@ -29,5 +29,6 @@ repos:
             -whitespace/line_length,
             -runtime/references,
             -runtime/string,
-            -whitespace/braces,"
+            -whitespace/braces,
+            -runtime/arrays,"
         ]

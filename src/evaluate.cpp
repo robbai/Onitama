@@ -1,43 +1,131 @@
+#include <algorithm>
 #include "evaluate.h"
-#include "move_tables.h"
 
-constexpr int MATERIAL = 30, TEMPO = 3;
+constexpr int MATERIAL = 100;
 
-int evaluate(Board *board) {
-    int eval = __builtin_popcount(board->pieces[0][STUDENT] | board->pieces[0][MASTER]) -
-               __builtin_popcount(board->pieces[1][STUDENT] | board->pieces[1][MASTER]);
-    eval *= MATERIAL;
+int PARAMETERS[TOTAL_PARAMETERS];
 
-    for (uint8_t turn = 0; turn < PLAYERS_NUM; ++turn) {
-        Bitboard squares = 0;
-        Bitboard pieces = board->pieces[turn][STUDENT] | board->pieces[turn][MASTER];
-        Bitboard targets = ~pieces;
-        while (pieces != 0) {
-            uint32_t mask = pieces & -pieces;
+void init_evaluation_parameters() {
+    int parameters[] = {
+            0,   -14, -17, -66, -35, -36, -19, -40, -28, -40, 20,  -33, -57, -56, -5,
+            -47, -17, -43, -26, -58, -39, -15, -24, -55, -13, -78, -28, -50, -29, -6,
+            -43, -54, -7,  -3,  -16, -16, -14, -23, -11, -33, -28, -20, 2,   -16, -15,
+            -38, -20, -11, -6,  -20, -12, -44, -14, -20, -2,  -39, -19, -34, -23, 15,
+            -1,  -24, 5,   -19, -5,  -28, -32, 5,   -11, -10, -28, -11, -9,  -8,  -40,
+            -18, -7,  0,   -22, -14, -18, 9,   -12, -30, 5,   -2,  1,   -11, -52, 3,
+            -12, -25, -10, 2,   -13, 13,  -22, -41, -34, -21, 1,   -24, -2,  -15, -24,
+            -1,  -3,  -66, 17,  -41, -3,  -30, -13, -28, -18, -37, -3,  -34, -15, -37,
+            -32, -30, -2,  -9,  -14, -11, -16, -8,  -6,  -71, -3,  -38, -38, -60, 16,
+            -7,  -28, -48, -6,  6,   -12, -24, 0,   -43, -26, -39, -8,  -39, -26, -24,
+            -50, -29, -37, -25, -3,  -30, -25, -28, -32, -50, -28, -29, -12, -37, -18,
+            -51, -26, -36, -9,  -50, -35, -8,  -21, -4,  -8,  -26, -17, -14, -5,  -24,
+            -3,  -41, -24, -14, -28, -19, 14,  -29, 3,   -14, -9,  -14, -20, -5,  3,
+            10,  2,   21,  0,   -2,  -34, 0,   -3,  1,   -15, -7,  18,  -38, -4,  13,
+            11,  -15, 14,  -1,  21,  -7,  -21, 23,  -12, -5,  0,   -2,  0,   10,  0,
+            0,   0,   -29, -12, -28, 0,   22,  37,  2,   -3,  3,   26,  -4,  6,   20,
+            7,   0,   -1,  0,   -9,  -12, 14,  -18, -1,  -3,  0,   -4,  12,  -16, -22,
+            -2,  9,   -5,  -18, 16,  0,   -18, 15,  -6,  13,  -11, 14,  -3,  -16, -7,
+            6,   2,   24,  0,   10,  15,  14,  2,   -7,  28,  12,  11,  16,  -7,  6,
+            9,   9,   1,   -37, -9,  -8,  -29, -13, -13, -13, 7,   -39, -45, 2,   -21,
+            -3,  0,   8,   -19, -2,  -47, -8,  -20, 3,   -8,  -25, -58, -14, -49, 2,
+            -30, -10, -21, 0,   -16, -5,  28,  -4,  -7,  -4,  -20, -2,  -2,  1,   -7,
+            12,  -6,  -11, -2,  -14, 6,   -9,  -21, -13, -13, -17, -10, 6,   -6,  -30,
+            -37, -29, 5,   -21, 13,  2,   -15, 7,   4,   4,   -3,  -5,  34,  10,  34,
+            16,  40,  -26, 0,   3,   0,   4,   1,   -4,  17,  0,   7,   5,   15,  10,
+            -4,  42,  0,   1,   4,   13,  4,   13,  21,  12,  42,  2,   11,  11,  56,
+            -2,  5,   5,   14,  -29, 15,  -9,  2,   4,   1,   15,  11,  3,   23,  11,
+            53,  -11, 17,  18,  36,  -6,  13,  1,   16,  11,  13,  -23, 6,   0,   6,
+            0,   10,  9,   10,  -1,  -20, -5,  26,  25,  0,   10,  40,  12,  -1,  4,
+            70,  -2,  35,  -6,  50,  22,  22,  4,   4,   2,   2,   4,   11,  2,   2,
+            6,   -6,  -2,  31,  -3,  -6,  13,  3,   -11, -4,  -8,  3,   -25, 9,   -17,
+            -7,  -5,  12,  -28, -5,  -6,  2,   0,   -16, 1,   -20, 0,   3,   -8,  0,
+            17,  9,   -6,  16,  0,   -4,  26,  7,   -20, 0,   -25, 12,  7,   -5,  2,
+            94,  -15, 48,  2,   1,   -18, 1,   0,   15,  -2,  7,   -34, 42,  -4,  7,
+            -7,  15,  53,  75,  6,   92,  -5,  59,  22,  25,  15,  89,  -25, 39,  -40,
+            58,  -5,  18,  -9,  98,  -12, 43,  -4,  69,  1,   94,  -15, 35,  -4,  -7,
+            -15, 67,  -31, 11,  -24, 99,  0,   53,  26,  55,  3,   52,  2,   69,  -14,
+            101, -23, 77,  -1,  15,  -27, 38,  -2,  100, 0,   46,  -20, 40,  -1,  38,
+            -1,  44,  2,   12,  10,  46,  -3,  42,  2,   73,  5,   53,  -6,  112, 14,
+            59,  -4,  64,  -9,  24,  -33, 72,  1,   53,  12,  46,  -3,  84,  -17, 90,
+            -1,  33,  7,   56,  -10, 60,  4,   77,  -14, 14,  -16, 6,   -15, 19,  -11,
+            41,  0,   0,   11,  0,   -5,  24,  -7,  66,  -7,  7,   -9,  19,  0,   1,
+            -1,  20,  -15, 1,   16,  10,  -2,  36,  -12, 28,  -7,  23,  0,   -12, 0,
+            3,   -21, 11,  -21, 0,   -34, 104, 2,   49,  -19, 21,  -11, -13, -1,  0,
+            -25, 17,  -1,  27,  -8,  -27, 13,  5,   -1,  -12, -27, 20,  15,  78,  2,
+            82,  0,   105, 7,   66,  5,   60,  -12, 8,   0,   110, -14, 57,  -13, 106,
+            -17, 55,  -2,  75,  -11, 41,  -14, 18,  -12, 55,  -7,  56,  -12, 107, -9,
+            150, 5,   154, -5,  156, 19,  136, 8,   153, -14, 172, 5,   171, 0,   168,
+            8,   159, -8,  157, -2,  174, -7,  177, 22,  177, 18,  134, 2,   136, -10,
+            142, -17, 51,  5,   71,  -30, 80,  0,   32,  -10, 100, -10, 3,   0,   78,
+            16,  60,  20,  59,  -7,  1,   3,   42,  -27, 52,  -1,  -15, 2,   65,  16,
+            18,  17,  32,  -19, 3,   11,  7,   -2,  17,  10,  9,   -14, 34,  -30, 49,
+            -29, 27,  1,   -8,  -7,  2,   0,   8,   -7,  18,  -43, 35,  -11, 18,  0,
+            27,  -2,  8,   -3,  0};
+    std::copy(std::begin(parameters), std::end(parameters), PARAMETERS);
+}
 
-            // Iterate through cards.
-            for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-                squares |= MOVE_TABLES[(board->cards[turn][card_index] * SQUARE_NUM +
-                                        __builtin_ctz(mask)) *
-                                               PLAYERS_NUM +
-                                       turn] &
-                           targets;
-            }
 
-            pieces ^= mask;
+int evaluate_white(Board *board) {
+    int eval = 0;
+
+    // Iterate through pieces.
+    Bitboard pieces = board->pieces[WHITE][STUDENT] | board->pieces[WHITE][MASTER];
+    while (pieces) {
+        int sq = __builtin_ctz(pieces);
+        Bitboard mask = (1u << sq);
+
+        // Add material.
+        bool master = (board->pieces[WHITE][MASTER] & mask);
+        if (!master)
+            eval += MATERIAL;
+
+        // Iterate through cards.
+        for (Card card : board->cards[WHITE]) {
+            int index = (sq * CARD_NUM + card) * PIECE_TYPES_NUM + master;
+            eval += PARAMETERS[index];
         }
-        if (turn) {
-            eval -= __builtin_popcount(squares);
-        } else {
-            eval += __builtin_popcount(squares);
-        }
-    }
 
-    if (board->turn) {
-        eval -= TEMPO;
-    } else {
-        eval += TEMPO;
+        pieces ^= mask;
     }
 
     return eval;
+}
+
+int evaluate_black(Board *board) {
+    int eval = 0;
+
+    // Iterate through pieces.
+    Bitboard pieces = board->pieces[BLACK][STUDENT] | board->pieces[BLACK][MASTER];
+    while (pieces) {
+        int sq = __builtin_ctz(pieces);
+        Bitboard mask = (1u << sq);
+
+        // Add material.
+        bool master = (board->pieces[BLACK][MASTER] & mask);
+        if (!master)
+            eval += MATERIAL;
+
+        // Iterate through cards.
+        for (Card card : board->cards[WHITE]) {
+            int index =
+                    ((SQUARE_NUM - 1 - sq) * CARD_NUM + card) * PIECE_TYPES_NUM + master;
+            eval += PARAMETERS[index];
+        }
+
+        pieces ^= mask;
+    }
+
+    return eval;
+}
+
+int evaluate(Board *board) {
+    return evaluate_white(board) - evaluate_black(board);
+}
+
+void get_evaluation_parameters(int *parameters) {
+    std::copy(std::begin(PARAMETERS), std::end(PARAMETERS), parameters);
+}
+
+void set_evaluation_parameters(int *parameters) {
+    std::copy(parameters, parameters + TOTAL_PARAMETERS, PARAMETERS);
 }

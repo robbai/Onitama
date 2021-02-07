@@ -15,3 +15,7 @@ TTable TTABLE(KEY_BITS);
 TTEntry *TTable::probe(Board *board) {
     return &table[board->hash & key_mask];
 }
+
+void TTable::clear() {
+    std::fill_n(this->table, this->size(), TTEntry());
+}

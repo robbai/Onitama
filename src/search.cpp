@@ -4,7 +4,6 @@
 #include <cmath>
 #include <utility>
 #include <cstring>
-#include <iostream>
 
 #include "board.h"
 #include "make_move.h"
@@ -16,7 +15,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -1000, WINDOW = 6;
+constexpr int MIN_EVAL = -10000, WINDOW = 20;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -54,6 +53,21 @@ std::string verify_pv(Board *board, Line *line, int depth) {
     line->length = count;
 
     return pv.substr(0, pv.length() - 2);
+}
+
+Board get_pv_leaf(Board board) {
+    Move moves[MAX_MOVES];
+    for (int i = 0; i < pv_line.length; ++i) {
+        Move move = pv_line.moves[i];
+        uint8_t size = gen_moves(&board, moves);
+        for (int j = 0; j < size; j++) {
+            if (moves[j] == move) {
+                make_move(&board, move);
+                break;
+            }
+        }
+    }
+    return board;
 }
 
 int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
@@ -216,7 +230,7 @@ int q_search(Board *board, int alpha, int beta, int ply) {
     return alpha;
 }
 
-Move start_search(Board *board) {
+Move start_search(Board *board, bool silent, float max_time) {
     // Setup.
     pv_line = {};
     nodes = 0;
@@ -245,19 +259,22 @@ Move start_search(Board *board) {
             int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
 
             // Output.
-            std::string value_str;
-            if (mate_plies > MAX_DEPTH + 255) {
-                value_str = std::to_string(value);
-            } else {
-                int mate_depth =
-                        static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
-                value_str = "#" + std::to_string(mate_depth);
+            if (!silent) {
+                std::string value_str;
+                if (mate_plies > MAX_DEPTH + 255) {
+                    value_str = std::to_string(value);
+                } else {
+                    int mate_depth =
+                            static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
+                    value_str = "#" + std::to_string(mate_depth);
+                }
+                printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, "
+                       "TT-hits "
+                       "= %8llu, %.3fs, "
+                       "PV = [%s]\n",
+                       depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
+                       verify_pv(board, &pv_line, depth).c_str());
             }
-            printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, TT-hits "
-                   "= %8llu, %.3fs, "
-                   "PV = [%s]\n",
-                   depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
-                   verify_pv(board, &pv_line, depth).c_str());
 
             // End search by mate detection.
             if (mate_plies <= depth)
@@ -266,7 +283,7 @@ Move start_search(Board *board) {
         }
 
         // End search by timeout.
-        if (depth > 1 && elapsed > 1)
+        if (elapsed > max_time)
             break;
     }
     return pv_line.moves[0];
