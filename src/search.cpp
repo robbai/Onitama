@@ -81,23 +81,23 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     }
 
     // Probe TB.
-    if (check_tb) {
-        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
-                                                   board->pieces[BLACK][STUDENT]);
-        if (students_left <= Tablebase::STUDENT_MEN) {
-            TBEntry entry = probe_tb(board);
-            ++nodes;
-            ++tb_hits;
-            switch (entry.state) {
-                case WIN:
-                    return -MIN_EVAL - board->move_count - entry.iter;
-                case LOSS:
-                    return MIN_EVAL + board->move_count + entry.iter;
-                default:
-                    return 0;
-            }
-        }
-    }
+    //    if (check_tb) {
+    //        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
+    //                                                   board->pieces[BLACK][STUDENT]);
+    //        if (students_left <= Tablebase::STUDENT_MEN) {
+    //            TBEntry entry = probe_tb(board);
+    //            ++nodes;
+    //            ++tb_hits;
+    //            switch (entry.state) {
+    //                case WIN:
+    //                    return -MIN_EVAL - board->move_count - entry.iter;
+    //                case LOSS:
+    //                    return MIN_EVAL + board->move_count + entry.iter;
+    //                default:
+    //                    return 0;
+    //            }
+    //        }
+    //    }
 
     // Probe TT.
     TTEntry *entry = TTABLE.probe(board);
