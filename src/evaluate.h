@@ -10,8 +10,4 @@ void init_evaluation_parameters();
 
 int evaluate(Board *board);
 
-void get_evaluation_parameters(int *parameters);
-
-void set_evaluation_parameters(int *parameters);
-
 #endif  // ONITAMA_EVALUATE_H

@@ -121,11 +121,3 @@ int evaluate_black(Board *board) {
 int evaluate(Board *board) {
     return evaluate_white(board) - evaluate_black(board);
 }
-
-void get_evaluation_parameters(int *parameters) {
-    std::copy(std::begin(PARAMETERS), std::end(PARAMETERS), parameters);
-}
-
-void set_evaluation_parameters(int *parameters) {
-    std::copy(parameters, parameters + TOTAL_PARAMETERS, PARAMETERS);
-}
