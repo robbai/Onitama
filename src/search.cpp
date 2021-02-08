@@ -165,7 +165,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                                      ? 0
                                      : (i < 10 ? 1 : depth / 3));
         if (reduction > depth - 1)
-            reduction = 0;
+            reduction = depth - 1;
         research = false;
 
         const Move move = moves[i];
@@ -283,18 +283,7 @@ void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
         SORT_VALUE[i] = HISTORY[board->turn][from][to];
     }
 
-    for (uint8_t i = bump; i < size; ++i) {
-        uint8_t max = i;
-
-        for (uint8_t j = i + 1; j < size; j++)
-            if (SORT_VALUE[j] > SORT_VALUE[max])
-                max = j;
-
-        if (i != max) {
-            std::swap(moves[i], moves[max]);
-            std::swap(SORT_VALUE[i], SORT_VALUE[max]);
-        }
-    }
+    quicksort(moves, SORT_VALUE, bump, size);
 }
 
 Move start_search(Board *board, bool silent, float max_time) {
