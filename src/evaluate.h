@@ -4,7 +4,7 @@
 
 #include "board.h"
 
-constexpr int TOTAL_PARAMETERS = (PIECE_TYPES_NUM * CARD_NUM * SQUARE_NUM);
+constexpr int TOTAL_PARAMETERS = (PIECE_TYPES_NUM * CARD_NUM * SQUARE_NUM * PLAYERS_NUM);
 
 void init_evaluation_parameters();
 
