@@ -23,4 +23,6 @@ std::string to_lower(std::string string);
 
 bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to = 0);
 
+void quicksort(Move *moves, int *values, int p, int q);
+
 #endif  // ONITAMA_UTIL_H
