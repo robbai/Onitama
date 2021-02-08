@@ -25,7 +25,11 @@ Line pv_line;
 
 Move ALL_MOVES[MAX_DEPTH][MAX_MOVES];
 
+uint16_t HISTORY[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM];
+int SORT_VALUE[MAX_MOVES];
+
 int q_search(Board *board, int alpha, int beta, int ply);
+void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump);
 
 std::string verify_pv(Board *board, Line *line, int depth) {
     int count = 0;
@@ -145,19 +149,28 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (bump_move(moves, size, entry->move, bump))
             ++bump;
     }
-    if (depth > 4 && !bump) {
-        // IID ordering.
-        search(board, depth / 4, alpha, beta, ply, false, following_pv, &line);
-        bump_move(moves, size, line.moves[0], bump);
+    for (uint8_t i = bump; i < size; ++i) {
+        // Capture ordering.
+        if (MoveBits::capture(moves[i]) && bump_move(moves, size, moves[i], bump))
+            ++bump;
     }
+    sort_moves(board, moves, size, bump);
 
     // Move loop.
     Move best_move;
     int best_value = MIN_EVAL;
+    bool research = false;
     for (uint8_t i = 0; i < size; ++i) {
+        uint8_t reduction = (i < 5 || i < bump || research || following_pv
+                                     ? 0
+                                     : (i < 10 ? 1 : depth / 3));
+        if (reduction > depth - 1)
+            reduction = 0;
+        research = false;
+
         const Move move = moves[i];
         make_move(board, move);
-        int value = -search(board, depth - 1, -beta, -alpha, ply + 1,
+        int value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
                             MoveBits::capture(move) || !ply, following_pv, &line);
         undo_move(board, move);
 
@@ -165,8 +178,29 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
             best_value = value;
             best_move = move;
             if (value > alpha) {
-                if (value >= beta)
-                    break;  // Cut-off.
+                // Re-search.
+                if (reduction) {
+                    research = true;
+                    --i;
+                    continue;
+                }
+
+                // Cut-off.
+                if (value >= beta) {
+                    // History heuristic.
+                    if (!MoveBits::capture(moves[i])) {
+                        Bitboard xor_board = MoveBits::xor_board(move);
+                        bool piece_type = MoveBits::piece_type(move);
+                        uint8_t from = __builtin_ctz(
+                                board->pieces[board->turn][piece_type] & xor_board);
+                        uint8_t to = __builtin_ctz(
+                                ~board->pieces[board->turn][piece_type] & xor_board);
+                        HISTORY[board->turn][from][to] += depth * depth;
+                    }
+
+                    break;
+                }
+
                 alpha = value;
                 curr_line->moves[0] = move;
                 memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
@@ -230,12 +264,46 @@ int q_search(Board *board, int alpha, int beta, int ply) {
     return alpha;
 }
 
+void reset_history() {
+    for (uint8_t i = 0; i < PLAYERS_NUM; ++i)
+        for (uint8_t j = 0; j < SQUARE_NUM; ++j)
+            for (uint8_t k = 0; k < SQUARE_NUM; ++k)
+                HISTORY[i][j][k] = 0;
+}
+
+void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
+    for (uint8_t i = bump; i < size; ++i) {
+        Move move = moves[i];
+
+        // History heuristic.
+        Bitboard xor_board = MoveBits::xor_board(move);
+        bool piece_type = MoveBits::piece_type(move);
+        uint8_t from = __builtin_ctz(board->pieces[board->turn][piece_type] & xor_board);
+        uint8_t to = __builtin_ctz(~board->pieces[board->turn][piece_type] & xor_board);
+        SORT_VALUE[i] = HISTORY[board->turn][from][to];
+    }
+
+    for (uint8_t i = bump; i < size; ++i) {
+        uint8_t max = i;
+
+        for (uint8_t j = i + 1; j < size; j++)
+            if (SORT_VALUE[j] > SORT_VALUE[max])
+                max = j;
+
+        if (i != max) {
+            std::swap(moves[i], moves[max]);
+            std::swap(SORT_VALUE[i], SORT_VALUE[max]);
+        }
+    }
+}
+
 Move start_search(Board *board, bool silent, float max_time) {
     // Setup.
     pv_line = {};
     nodes = 0;
     tb_hits = 0;
     tt_hits = 0;
+    reset_history();
     clock_t start = clock();
     int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
