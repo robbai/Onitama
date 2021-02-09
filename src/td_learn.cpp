@@ -5,8 +5,11 @@
 #include "search.h"
 #include "make_move.h"
 
+// Controls the effective maximum alpha.
+constexpr float LEARN_RATE = 5;
+
 // Alpha controls size of the parameter updates.
-constexpr float ALPHA = 10.0;
+float ALPHA[TOTAL_PARAMETERS];
 
 /*
  * Lambda controls how much the later score differences in a game influence the
@@ -18,6 +21,10 @@ constexpr float CENTISTUDENT_FACTOR = 0.005;
 
 constexpr int MAX_GAME_LENGTH = 64;
 
+void init_td_learn() {
+    std::fill_n(ALPHA, TOTAL_PARAMETERS, 1);
+}
+
 void print_parameters(int *parameters);
 
 // https://www.stmintz.com/ccc/index.php?id=117970
@@ -27,7 +34,9 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
     // Store the current parameters and final updates.
     int parameters[TOTAL_PARAMETERS];
     get_evaluation_parameters(parameters);
-    float parameter_updates[TOTAL_PARAMETERS] = {};
+
+    float net_change[TOTAL_PARAMETERS] = {};
+    float absolute_change[TOTAL_PARAMETERS] = {};
 
     // Loop to setup position scores and score differences.
     float s[game_length];  // Array of position scores.
@@ -42,11 +51,13 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
 
     // Loop over eval parameters.
     for (int p = 0; p < TOTAL_PARAMETERS; p++) {
-        float sum1 = 0;
+        float net = 0;
 
         // Loop over game positions.
         for (int m = 0; m < game_length; m++) {
             // Compute the scoring derivative by adding 1/100 of student.
+            if (!is_parameter_used(&leaves[m], p))
+                continue;
             parameters[p] += 1;
             set_evaluation_parameters(parameters);
             float ds = (tanh(CENTISTUDENT_FACTOR * evaluate(&leaves[m])) - s[m]) / 0.01;
@@ -54,25 +65,31 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
             set_evaluation_parameters(parameters);
             if (ds == 0)
                 continue;
-            //            std::cout << CARD_NAMES[(j / 2) % CARD_NUM] << ": " << ds << std::endl;
+            //            std::cout << CARD_NAMES[(p / (PLAYERS_NUM * PIECE_TYPES_NUM)) % CARD_NUM]
+            //                      << ": " << ds << std::endl;
 
             // Now sum over all score differences to end of game,
             // weighting down the later positions by lambda^(m-i).
-            float sum2 = 0;
+            float added_net = 0;
             for (int n = m; n < game_length; n++)
-                sum2 += pow(LAMBDA, n - m) * d[n];
+                added_net += pow(LAMBDA, n - m) * d[n];
 
             // Add in the contribution of this position to the parameter update.
-            sum1 += ds * sum2;
+            added_net *= ds;
+            net += added_net;
+            absolute_change[p] += abs(added_net);
         }
 
         // Update the scoring parameter.
-        parameter_updates[p] += ALPHA * sum1;
+        net_change[p] = net;
     }
 
-    // Update the parameters.
-    for (int j = 0; j < TOTAL_PARAMETERS; j++)
-        parameters[j] += parameter_updates[j];
+    // Update the parameters and alpha.
+    for (int p = 0; p < TOTAL_PARAMETERS; p++) {
+        parameters[p] += LEARN_RATE * ALPHA[p] * net_change[p];
+        if (absolute_change[p] != 0)
+            ALPHA[p] = abs(net_change[p]) / absolute_change[p];
+    }
 
     // Print the updated parameters.
     print_parameters(parameters);
@@ -81,8 +98,8 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
 }
 
 void print_parameters(int *parameters) {
-    for (int i = 0; i < TOTAL_PARAMETERS; i++)
-        std::cout << (i ? ", " : "{") << parameters[i];
+    for (int p = 0; p < TOTAL_PARAMETERS; p++)
+        std::cout << (p ? ", " : "{") << parameters[p];
     std::cout << "}" << std::endl << std::endl;
 }
 
@@ -99,7 +116,7 @@ void learn_game(Board *board) {
         if (board->move_count == MAX_GAME_LENGTH)
             break;
 
-        Move move = start_search(board, true, 0.001);
+        Move move = start_search(board, true, 0.002);
 
         // Print progression of game.
         std::cout << board->move_count << " ";

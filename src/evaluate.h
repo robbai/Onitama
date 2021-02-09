@@ -14,4 +14,6 @@ void get_evaluation_parameters(int *parameters);
 
 void set_evaluation_parameters(int *parameters);
 
+bool is_parameter_used(Board *board, int p);
+
 #endif  // ONITAMA_EVALUATE_H

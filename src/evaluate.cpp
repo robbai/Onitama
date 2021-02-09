@@ -153,7 +153,7 @@ int evaluate_black(Board *board) {
             eval += MATERIAL;
 
         // Iterate through cards.
-        for (Card card : board->cards[WHITE]) {
+        for (Card card : board->cards[BLACK]) {
             int index = (((SQUARE_NUM - 1 - sq) * CARD_NUM + card) * PIECE_TYPES_NUM +
                          master) *
                                 PLAYERS_NUM +
@@ -177,4 +177,22 @@ void get_evaluation_parameters(int *parameters) {
 
 void set_evaluation_parameters(int *parameters) {
     std::copy(parameters, parameters + TOTAL_PARAMETERS, PARAMETERS);
+}
+
+bool is_parameter_used(Board *board, int p) {
+    bool turn = p % PLAYERS_NUM;
+    bool master = (p / PLAYERS_NUM) % PIECE_TYPES_NUM;
+    Card card = (Card)((p / (PLAYERS_NUM * PIECE_TYPES_NUM)) % CARD_NUM);
+    uint8_t sq = (p / (PLAYERS_NUM * PIECE_TYPES_NUM * CARD_NUM)) % SQUARE_NUM;
+
+    bool side = turn != board->turn;
+
+    if (board->cards[side][0] != card && board->cards[side][1] != card)
+        return false;
+
+    if (side) {
+        return side && board->pieces[BLACK][master] & (1u << (SQUARE_NUM - 1 - sq));
+    } else {
+        return !side && board->pieces[WHITE][master] & (1u << sq);
+    }
 }

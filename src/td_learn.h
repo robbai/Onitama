@@ -2,6 +2,9 @@
 #define ONITAMA_TD_LEARN_H
 
 #include "board.h"
+
+void init_td_learn();
+
 void learn_game(Board *board);
 
 #endif  // ONITAMA_TD_LEARN_H
