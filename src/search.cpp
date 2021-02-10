@@ -25,7 +25,7 @@ Line pv_line;
 
 Move ALL_MOVES[MAX_DEPTH][MAX_MOVES];
 
-uint16_t HISTORY[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM];
+uint16_t HISTORY[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM][PIECE_TYPES_NUM];
 int SORT_VALUE[MAX_MOVES];
 
 int q_search(Board *board, int alpha, int beta, int ply);
@@ -171,7 +171,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
             if (!following_pv) {
                 uint8_t from = MoveBits::from(move);
                 uint8_t to = MoveBits::to(move);
-                if (!HISTORY[board->turn][from][to])
+                bool piece_type = MoveBits::piece_type(move);
+                if (!HISTORY[board->turn][from][to][piece_type])
                     continue;
             }
         }
@@ -203,7 +204,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                     if (!MoveBits::capture(moves[i])) {
                         uint8_t from = MoveBits::from(move);
                         uint8_t to = MoveBits::to(move);
-                        HISTORY[board->turn][from][to] += depth * depth;
+                        bool piece_type = MoveBits::piece_type(move);
+                        HISTORY[board->turn][from][to][piece_type] += depth * depth;
                     }
 
                     break;
@@ -276,7 +278,8 @@ void reset_history() {
     for (uint8_t i = 0; i < PLAYERS_NUM; ++i)
         for (uint8_t j = 0; j < SQUARE_NUM; ++j)
             for (uint8_t k = 0; k < SQUARE_NUM; ++k)
-                HISTORY[i][j][k] = 0;
+                for (uint8_t l = 0; l < PIECE_TYPES_NUM; ++l)
+                    HISTORY[i][j][k][l] = 0;
 }
 
 void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
@@ -286,7 +289,8 @@ void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
         // History heuristic.
         uint8_t from = MoveBits::from(move);
         uint8_t to = MoveBits::to(move);
-        SORT_VALUE[i] = HISTORY[board->turn][from][to];
+        bool piece_type = MoveBits::piece_type(move);
+        SORT_VALUE[i] = HISTORY[board->turn][from][to][piece_type];
     }
 
     quicksort(moves, SORT_VALUE, bump, size);
