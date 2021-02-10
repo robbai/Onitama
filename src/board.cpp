@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "move_bits.h"
+
 // This function only checks for whether the non-moving player has won.
 bool Board::game_over() {
     return (this->pieces[this->turn][MASTER] &
@@ -29,4 +31,10 @@ bool Board::operator==(const Board &other) {
     }
 
     return this->side_card == other.side_card && this->turn == other.turn;
+}
+
+bool Board::winning_move(Move move) {
+    Bitboard to = (1u << MoveBits::to(move));
+    return (this->pieces[!this->turn][MASTER] & to) ||
+           (MoveBits::piece_type(move) && (to & HOMES[!this->turn]));
 }
