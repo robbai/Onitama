@@ -5,28 +5,36 @@
 #include "util.h"
 
 namespace MoveBits {
+    constexpr uint8_t from(Move move) {
+        return move & 31;
+    }
+
+    constexpr uint8_t to(Move move) {
+        return (move >> 5) & 31;
+    }
+
     constexpr Bitboard xor_board(Move move) {
-        return move & 33554431;
+        return (1u << from(move)) | (1u << to(move));
     }
 
     constexpr bool card_index(Move move) {
-        return move & 33554432;
+        return move & 1024;
     }
 
     constexpr bool capture(Move move) {
-        return move & 67108864;
+        return move & 2048;
     }
 
     constexpr bool piece_type(Move move) {
-        return move & 134217728;
+        return move & 4096;
     }
 
-    constexpr Move half_create_move(uint32_t mask_1, bool card_index, bool piece_type) {
-        return mask_1 | (card_index << SQUARE_NUM) | (piece_type << 27);
+    constexpr Move half_create_move(uint8_t from, bool card_index, bool piece_type) {
+        return from | (card_index << 10) | (piece_type << 12);
     }
 
-    constexpr Move finish_create_move(Move move, uint32_t mask_2, bool capture) {
-        return move | mask_2 | (capture << 26);
+    constexpr Move finish_create_move(Move move, uint8_t to, bool capture) {
+        return move | (to << 5) | (capture << 11);
     }
 }  // namespace MoveBits
 
