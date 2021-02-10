@@ -15,7 +15,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -10000, WINDOW = 20;
+constexpr int MIN_EVAL = -10000, WINDOW = 44;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -161,13 +161,30 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     int best_value = MIN_EVAL;
     bool research = false;
     for (uint8_t i = 0; i < size; ++i) {
+        const Move move = moves[i];
+
         uint8_t reduction =
-                (i < 13 || i < bump || research || following_pv ? 0 : depth / 4);
+                (i < 5 || i < bump || research || following_pv ? 0
+                                                               : 1 + depth / 3);  // LMR.
+        if (reduction && reduction >= depth - 1) {
+            // History pruning.
+            if (!following_pv) {
+                Bitboard xor_board = MoveBits::xor_board(move);
+                bool piece_type = MoveBits::piece_type(move);
+                uint8_t from =
+                        __builtin_ctz(board->pieces[board->turn][piece_type] & xor_board);
+                uint8_t to = __builtin_ctz(~board->pieces[board->turn][piece_type] &
+                                           xor_board);
+                if (!HISTORY[board->turn][from][to])
+                    continue;
+            }
+        }
+
         if (reduction > depth - 1)
             reduction = depth - 1;
+
         research = false;
 
-        const Move move = moves[i];
         make_move(board, move);
         int value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
                             MoveBits::capture(move) || !ply, following_pv, &line);
