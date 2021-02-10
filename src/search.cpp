@@ -169,12 +169,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (reduction && reduction >= depth - 1) {
             // History pruning.
             if (!following_pv) {
-                Bitboard xor_board = MoveBits::xor_board(move);
-                bool piece_type = MoveBits::piece_type(move);
-                uint8_t from =
-                        __builtin_ctz(board->pieces[board->turn][piece_type] & xor_board);
-                uint8_t to = __builtin_ctz(~board->pieces[board->turn][piece_type] &
-                                           xor_board);
+                uint8_t from = MoveBits::from(move);
+                uint8_t to = MoveBits::to(move);
                 if (!HISTORY[board->turn][from][to])
                     continue;
             }
@@ -205,12 +201,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                 if (value >= beta) {
                     // History heuristic.
                     if (!MoveBits::capture(moves[i])) {
-                        Bitboard xor_board = MoveBits::xor_board(move);
-                        bool piece_type = MoveBits::piece_type(move);
-                        uint8_t from = __builtin_ctz(
-                                board->pieces[board->turn][piece_type] & xor_board);
-                        uint8_t to = __builtin_ctz(
-                                ~board->pieces[board->turn][piece_type] & xor_board);
+                        uint8_t from = MoveBits::from(move);
+                        uint8_t to = MoveBits::to(move);
                         HISTORY[board->turn][from][to] += depth * depth;
                     }
 
@@ -292,10 +284,8 @@ void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
         Move move = moves[i];
 
         // History heuristic.
-        Bitboard xor_board = MoveBits::xor_board(move);
-        bool piece_type = MoveBits::piece_type(move);
-        uint8_t from = __builtin_ctz(board->pieces[board->turn][piece_type] & xor_board);
-        uint8_t to = __builtin_ctz(~board->pieces[board->turn][piece_type] & xor_board);
+        uint8_t from = MoveBits::from(move);
+        uint8_t to = MoveBits::to(move);
         SORT_VALUE[i] = HISTORY[board->turn][from][to];
     }
 
