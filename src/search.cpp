@@ -161,9 +161,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     int best_value = MIN_EVAL;
     bool research = false;
     for (uint8_t i = 0; i < size; ++i) {
-        uint8_t reduction = (i < 5 || i < bump || research || following_pv
-                                     ? 0
-                                     : (i < 10 ? 1 : depth / 3));
+        uint8_t reduction =
+                (i < 13 || i < bump || research || following_pv ? 0 : depth / 4);
         if (reduction > depth - 1)
             reduction = depth - 1;
         research = false;
