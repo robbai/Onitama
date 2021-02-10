@@ -174,17 +174,17 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                             MoveBits::capture(move) || !ply, following_pv, &line);
         undo_move(board, move);
 
+        // Re-search.
+        if (value > alpha && reduction) {
+            research = true;
+            --i;
+            continue;
+        }
+
         if (value > best_value) {
             best_value = value;
             best_move = move;
             if (value > alpha) {
-                // Re-search.
-                if (reduction) {
-                    research = true;
-                    --i;
-                    continue;
-                }
-
                 // Cut-off.
                 if (value >= beta) {
                     // History heuristic.
