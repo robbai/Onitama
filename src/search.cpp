@@ -150,6 +150,11 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
             ++bump;
     }
     for (uint8_t i = bump; i < size; ++i) {
+        // Winning-move ordering.
+        if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
+            ++bump;
+    }
+    for (uint8_t i = bump; i < size; ++i) {
         // Capture ordering.
         if (MoveBits::capture(moves[i]) && bump_move(moves, size, moves[i], bump))
             ++bump;
