@@ -8,14 +8,14 @@
 // Controls the effective maximum alpha.
 constexpr float LEARN_RATE = 5;
 
-// Alpha controls size of the parameter updates.
-float ALPHA[TOTAL_PARAMETERS];
-
 /*
  * Lambda controls how much the later score differences in a game influence the
  * contribution of a particular position's score derivative.
 */
 constexpr float LAMBDA = 0.9;
+
+// Alpha controls size of the parameter updates.
+float ALPHA[TOTAL_PARAMETERS];
 
 constexpr float CENTISTUDENT_FACTOR = 0.005;
 
@@ -28,7 +28,8 @@ void init_td_learn() {
 void print_parameters(int *parameters);
 
 // https://www.stmintz.com/ccc/index.php?id=117970
-void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
+void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
+                      bool silent = false) {
     // Game result is -1, 0, or 1.
 
     // Store the current parameters and final updates.
@@ -92,7 +93,8 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length) {
     }
 
     // Print the updated parameters.
-    print_parameters(parameters);
+    if (!silent)
+        print_parameters(parameters);
 
     set_evaluation_parameters(parameters);
 }
@@ -103,7 +105,7 @@ void print_parameters(int *parameters) {
     std::cout << "}" << std::endl << std::endl;
 }
 
-void learn_game(Board *board) {
+void learn_game(Board *board, bool silent) {
     Board leaves[MAX_GAME_LENGTH];
     float game_result = 0;
 
@@ -116,10 +118,11 @@ void learn_game(Board *board) {
         if (board->move_count == MAX_GAME_LENGTH)
             break;
 
-        Move move = start_search(board, true, 0.002);
+        Move move = start_search(board, true, 0.003);
 
         // Print progression of game.
-        std::cout << board->move_count << " ";
+        if (!silent)
+            std::cout << board->move_count << " ";
 
         // Store leaf and make move.
         Board leaf = get_pv_leaf(*board);
@@ -128,7 +131,8 @@ void learn_game(Board *board) {
     }
 
     // Print game result.
-    std::cout << std::endl << "Done (" << game_result << ")" << std::endl;
+    if (!silent)
+        std::cout << std::endl << "Done (" << game_result << ")" << std::endl;
 
-    learn_parameters(game_result, leaves, board->move_count);
+    learn_parameters(game_result, leaves, board->move_count, silent);
 }

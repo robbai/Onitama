@@ -5,6 +5,6 @@
 
 void init_td_learn();
 
-void learn_game(Board *board);
+void learn_game(Board *board, bool silent = false);
 
 #endif  // ONITAMA_TD_LEARN_H
