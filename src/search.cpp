@@ -15,7 +15,9 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -10000, WINDOW = 20;
+constexpr int MIN_EVAL = -10000, WINDOW = 44;
+
+int PARAM = 0;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -85,46 +87,46 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     }
 
     // Probe TB.
-    if (check_tb) {
-        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
-                                                   board->pieces[BLACK][STUDENT]);
-        if (students_left <= Tablebase::STUDENT_MEN) {
-            TBEntry entry = probe_tb(board);
-            ++nodes;
-            ++tb_hits;
-            switch (entry.state) {
-                case WIN:
-                    return -MIN_EVAL - board->move_count - entry.iter;
-                case LOSS:
-                    return MIN_EVAL + board->move_count + entry.iter;
-                default:
-                    return 0;
-            }
-        }
-    }
+    //    if (check_tb) {
+    //        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
+    //                                                   board->pieces[BLACK][STUDENT]);
+    //        if (students_left <= Tablebase::STUDENT_MEN) {
+    //            TBEntry entry = probe_tb(board);
+    //            ++nodes;
+    //            ++tb_hits;
+    //            switch (entry.state) {
+    //                case WIN:
+    //                    return -MIN_EVAL - board->move_count - entry.iter;
+    //                case LOSS:
+    //                    return MIN_EVAL + board->move_count + entry.iter;
+    //                default:
+    //                    return 0;
+    //            }
+    //        }
+    //    }
 
     // Probe TT.
-    TTEntry *entry = TTABLE.probe(board);
-    uint32_t remaining_hash = (board->hash >> 32);
-    bool hash_match = (entry->remaining_hash == remaining_hash);
-    if ((ply || curr_line->length) && hash_match && entry->depth >= depth) {
-        ++tt_hits;
-        switch (entry->type) {
-            case EXACT:
-                ++nodes;
-                return entry->value;
-            case LOWER:
-                alpha = std::max(alpha, entry->value);
-                break;
-            case UPPER:
-                beta = std::min(beta, entry->value);
-                break;
-        }
-        if (alpha >= beta) {
-            ++nodes;
-            return entry->value;
-        }
-    }
+    //    TTEntry *entry = TTABLE.probe(board);
+    //    uint32_t remaining_hash = (board->hash >> 32);
+    //    bool hash_match = (entry->remaining_hash == remaining_hash);
+    //    if ((ply || curr_line->length) && hash_match && entry->depth >= depth) {
+    //        ++tt_hits;
+    //        switch (entry->type) {
+    //            case EXACT:
+    //                ++nodes;
+    //                return entry->value;
+    //            case LOWER:
+    //                alpha = std::max(alpha, entry->value);
+    //                break;
+    //            case UPPER:
+    //                beta = std::min(beta, entry->value);
+    //                break;
+    //        }
+    //        if (alpha >= beta) {
+    //            ++nodes;
+    //            return entry->value;
+    //        }
+    //    }
 
     // Leaf.
     if (depth == 0)
@@ -144,11 +146,11 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (following_pv)
             ++bump;
     }
-    if (entry->remaining_hash == remaining_hash) {
-        // TT ordering.
-        if (bump_move(moves, size, entry->move, bump))
-            ++bump;
-    }
+    //    if (entry->remaining_hash == remaining_hash) {
+    //        // TT ordering.
+    //        if (bump_move(moves, size, entry->move, bump))
+    //            ++bump;
+    //    }
     for (uint8_t i = bump; i < size; ++i) {
         // Capture ordering.
         if (MoveBits::capture(moves[i]) && bump_move(moves, size, moves[i], bump))
@@ -161,13 +163,30 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     int best_value = MIN_EVAL;
     bool research = false;
     for (uint8_t i = 0; i < size; ++i) {
+        const Move move = moves[i];
+
         uint8_t reduction =
-                (i < 13 || i < bump || research || following_pv ? 0 : depth / 4);
+                (i < 5 || i < bump || research || following_pv ? 0
+                                                               : 1 + depth / 3);  // LMR.
+        if (reduction && reduction >= depth - 1) {
+            // History pruning.
+            if (!following_pv) {
+                Bitboard xor_board = MoveBits::xor_board(move);
+                bool piece_type = MoveBits::piece_type(move);
+                uint8_t from =
+                        __builtin_ctz(board->pieces[board->turn][piece_type] & xor_board);
+                uint8_t to = __builtin_ctz(~board->pieces[board->turn][piece_type] &
+                                           xor_board);
+                if (!HISTORY[board->turn][from][to])
+                    continue;
+            }
+        }
+
         if (reduction > depth - 1)
             reduction = depth - 1;
+
         research = false;
 
-        const Move move = moves[i];
         make_move(board, move);
         int value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
                             MoveBits::capture(move) || !ply, following_pv, &line);
@@ -209,20 +228,20 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     }
 
     // Store in TT.
-    if (!hash_match || entry->depth < depth) {
-        entry->value = best_value;
-        if (best_value <= alpha_original) {
-            entry->type = UPPER;
-        } else if (best_value >= beta) {
-            entry->type = LOWER;
-        } else {
-            entry->type = EXACT;
-        }
-        entry->depth = depth;
-        entry->remaining_hash = remaining_hash;
-        entry->move = best_move;
-        entry->value = best_value;
-    }
+    //    if (!hash_match || entry->depth < depth) {
+    //        entry->value = best_value;
+    //        if (best_value <= alpha_original) {
+    //            entry->type = UPPER;
+    //        } else if (best_value >= beta) {
+    //            entry->type = LOWER;
+    //        } else {
+    //            entry->type = EXACT;
+    //        }
+    //        entry->depth = depth;
+    //        entry->remaining_hash = remaining_hash;
+    //        entry->move = best_move;
+    //        entry->value = best_value;
+    //    }
 
     return best_value;
 }
@@ -306,6 +325,9 @@ Move start_search(Board *board, bool silent, float max_time) {
         if (value <= alpha || value >= beta) {
             alpha = MIN_EVAL, beta = -MIN_EVAL;
         } else {
+            if (elapsed > max_time)
+                break;
+
             alpha = value - WINDOW;
             beta = value + WINDOW;
 

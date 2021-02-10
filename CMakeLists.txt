@@ -36,9 +36,6 @@ add_executable(
         src/search.h
         src/perft.cpp
         src/perft.h
-        lib/easywsclient/easywsclient.cpp
-        src/client.cpp
-        src/client.h
         src/tb/tb_gen.cpp
         src/tb/tb_gen.h
         src/tb/tb_probe.cpp
