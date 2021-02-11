@@ -6,20 +6,20 @@
 #include "make_move.h"
 
 // Controls the effective maximum alpha.
-constexpr float LEARN_RATE = 5;
+constexpr float LEARN_RATE = 4;
 
 /*
  * Lambda controls how much the later score differences in a game influence the
  * contribution of a particular position's score derivative.
 */
-constexpr float LAMBDA = 0.9;
+constexpr float LAMBDA = 0.97;
 
 // Alpha controls size of the parameter updates.
 float ALPHA[TOTAL_PARAMETERS];
 
 constexpr float CENTISTUDENT_FACTOR = 0.005;
 
-constexpr int MAX_GAME_LENGTH = 64;
+constexpr int MAX_GAME_LENGTH = 96;
 
 void init_td_learn() {
     std::fill_n(ALPHA, TOTAL_PARAMETERS, 1);
@@ -118,7 +118,7 @@ void learn_game(Board *board, bool silent) {
         if (board->move_count == MAX_GAME_LENGTH)
             break;
 
-        Move move = start_search(board, true, 0.003);
+        Move move = start_search(board, true, 0.006);
 
         // Print progression of game.
         if (!silent)
