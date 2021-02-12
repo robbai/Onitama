@@ -4,7 +4,7 @@
 
 #include "board.h"
 
-constexpr uint8_t MAX_DEPTH = 30;
+constexpr uint8_t MAX_DEPTH = 64;
 
 Move start_search(Board *board, bool silent = false, float max_time = 1);
 

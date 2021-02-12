@@ -1,5 +1,6 @@
 #include <iostream>
 #include "move_tables.h"
+#include "client.h"
 #include "tt/zobrist.h"
 #include "td_learn.h"
 #include "evaluate.h"

@@ -75,8 +75,9 @@ Board get_pv_leaf(Board board) {
 }
 
 int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-           bool following_pv, Line *curr_line) {
+           bool pv_node, bool following_pv, Line *curr_line) {
     int alpha_original = alpha;
+    bool root = !ply;
 
     // Terminal.
     if (board->game_over()) {
@@ -103,11 +104,24 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     //        }
     //    }
 
+    // Leaf.
+    if (depth == 0)
+        return q_search(board, alpha, beta, ply);
+    ++nodes;
+
+    // Mate-distance pruning.
+    if (!root) {
+        alpha = std::max(alpha, MIN_EVAL + ply);
+        beta = std::min(beta, -MIN_EVAL - ply - 1);
+        if (alpha >= beta)
+            return alpha;
+    }
+
     // Probe TT.
     TTEntry *entry = TTABLE.probe(board);
     uint32_t remaining_hash = (board->hash >> 32);
     bool hash_match = (entry->remaining_hash == remaining_hash);
-    if ((ply || curr_line->length) && hash_match && entry->depth >= depth) {
+    if (!pv_node && hash_match && entry->depth >= depth) {
         ++tt_hits;
         switch (entry->type) {
             case EXACT:
@@ -125,12 +139,6 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
             return entry->value;
         }
     }
-
-    // Leaf.
-    if (depth == 0)
-        return q_search(board, alpha, beta, ply);
-
-    ++nodes;
 
     Line line;
     Move *moves = ALL_MOVES[ply];
@@ -159,7 +167,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (MoveBits::capture(moves[i]) && bump_move(moves, size, moves[i], bump))
             ++bump;
     }
-    sort_moves(board, moves, size, bump);
+    sort_moves(board, moves, size, bump);  // Quiet ordering (history).
 
     // Move loop.
     Move best_move;
@@ -168,9 +176,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
 
-        uint8_t reduction =
-                (i < 5 || i < bump || research || following_pv ? 0
-                                                               : 1 + depth / 3);  // LMR.
+        uint8_t reduction = (i < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
         if (reduction && reduction >= depth - 1) {
             // History pruning.
             if (!following_pv) {
@@ -185,24 +191,38 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (reduction > depth - 1)
             reduction = depth - 1;
 
-        research = false;
-
         make_move(board, move);
-        int value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                            MoveBits::capture(move) || !ply, following_pv, &line);
-        undo_move(board, move);
 
-        // Re-search.
-        if (value > alpha && reduction) {
-            research = true;
-            --i;
-            continue;
+        int value;
+        if (!i) {
+            value = -search(board, depth - 1, -beta, -alpha, ply + 1,
+                            root || MoveBits::capture(move), pv_node, following_pv,
+                            &line);
+        } else {
+            value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
+                            root || MoveBits::capture(move), false, following_pv, &line);
+            if (value > alpha) {
+                if (reduction)
+                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
+                                    root || MoveBits::capture(move), pv_node,
+                                    following_pv, &line);
+                if (value > alpha)
+                    value = -search(board, depth - 1, -beta, -alpha, ply + 1,
+                                    root || MoveBits::capture(move), pv_node,
+                                    following_pv, &line);
+            }
         }
+
+        undo_move(board, move);
 
         if (value > best_value) {
             best_value = value;
             best_move = move;
             if (value > alpha) {
+                curr_line->moves[0] = move;
+                memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
+                curr_line->length = line.length + 1;
+
                 // Cut-off.
                 if (value >= beta) {
                     // History heuristic.
@@ -217,9 +237,6 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                 }
 
                 alpha = value;
-                curr_line->moves[0] = move;
-                memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
-                curr_line->length = line.length + 1;
             }
         }
     }
@@ -264,6 +281,15 @@ int q_search(Board *board, int alpha, int beta, int ply) {
     uint8_t size = gen_moves(
             board, moves,
             (board->pieces[!board->turn][STUDENT] | board->pieces[!board->turn][MASTER]));
+
+    // Winning-move ordering.
+    int bump = 0;
+    for (uint8_t i = bump; i < size; ++i) {
+        // Winning-move ordering.
+        if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
+            ++bump;
+    }
+
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
         make_move(board, move);
@@ -314,7 +340,8 @@ Move start_search(Board *board, bool silent, float max_time) {
     // Iterative deepening.
     while (depth <= MAX_DEPTH) {
         Line line;
-        int value = search(board, depth, alpha, beta, 0, false, pv_line.length, &line);
+        int value =
+                search(board, depth, alpha, beta, 0, false, true, pv_line.length, &line);
 
         double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
