@@ -4,7 +4,7 @@
 
 #include "board.h"
 
-constexpr uint8_t MAX_DEPTH = 30;
+constexpr uint8_t MAX_DEPTH = 64;
 
 extern int PARAM;
 

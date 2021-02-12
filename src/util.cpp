@@ -58,10 +58,8 @@ std::string pretty_board(Board *board) {
 }
 
 std::string move_string(Board *board, Move move) {
-    Bitboard xor_board = MoveBits::xor_board(move);
-    int from = __builtin_ctz(xor_board & (board->pieces[board->turn][STUDENT] |
-                                          board->pieces[board->turn][MASTER]));
-    int to = __builtin_ctz(xor_board ^ (1 << from));
+    int from = MoveBits::from(move);
+    int to = MoveBits::to(move);
     return CARD_NAMES[board->cards[board->turn][MoveBits::card_index(move)]] + ":" +
            SQUARE_NAMES[from] + SQUARE_NAMES[to];
 }

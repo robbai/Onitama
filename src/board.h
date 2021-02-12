@@ -21,6 +21,7 @@ class Board {
     bool game_over();
     Board copy();
     bool operator==(const Board &other);
+    bool winning_move(Move move);
 };
 
 #endif  // ONITAMA_BOARD_H
