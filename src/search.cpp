@@ -361,7 +361,7 @@ Move start_search(Board *board, bool silent, float max_time) {
             if (!silent) {
                 std::string value_str;
                 if (mate_plies > MAX_DEPTH + 255) {
-                    value_str = std::to_string(value);
+                    value_str = std::to_string(to_centi(value));
                 } else {
                     int mate_depth =
                             static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
