@@ -6,13 +6,13 @@
 #include "make_move.h"
 
 // Controls the effective maximum alpha.
-constexpr float LEARN_RATE = 10;
+constexpr float LEARN_RATE = 20;
 
 /*
  * Lambda controls how much the later score differences in a game influence the
  * contribution of a particular position's score derivative.
 */
-constexpr float LAMBDA = 0.98;
+float LAMBDA = 1;
 
 // Alpha controls size of the parameter updates.
 float ALPHA[TOTAL_PARAMETERS];
@@ -21,8 +21,13 @@ constexpr float CENTISTUDENT_FACTOR = 0.0005;
 
 constexpr int MAX_GAME_LENGTH = 96;
 
+float QUALITY_TOTAL[MAX_GAME_LENGTH];
+float QUALITY_FREQ[MAX_GAME_LENGTH];
+
 void init_td_learn() {
     std::fill_n(ALPHA, TOTAL_PARAMETERS, 1);
+    std::fill_n(QUALITY_TOTAL, MAX_GAME_LENGTH, 0);
+    std::fill_n(QUALITY_FREQ, MAX_GAME_LENGTH, 0);
 }
 
 void print_parameters(int *parameters);
@@ -48,6 +53,8 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
             d[m - 1] = s[m] - s[m - 1];
         if (m == game_length - 1)
             d[m] = game_result - s[m];
+        QUALITY_TOTAL[game_length - 1 - m] += 2 * abs(game_result - s[m]) - 1;
+        ++QUALITY_FREQ[game_length - 1 - m];
     }
 
     // Loop over eval parameters.
@@ -56,7 +63,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
 
         // Loop over game positions.
         for (int m = 0; m < game_length; m++) {
-            // Compute the scoring derivative by adding 1/100 of student.
+            // Compute the scoring derivative by adding the smallest bonus.
             if (!is_parameter_used(&leaves[m], p))
                 continue;
             parameters[p] += 1;
@@ -91,6 +98,14 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
         if (absolute_change[p] != 0)
             ALPHA[p] = abs(net_change[p]) / absolute_change[p];
     }
+
+    // Update lambda.
+    LAMBDA = 0;
+    for (int m = 0; m < game_length; m++) {
+        LAMBDA += std::pow(QUALITY_TOTAL[m] / QUALITY_FREQ[m], 1 / (game_length - 1 - m));
+    }
+    LAMBDA = fmin(1, LAMBDA / game_length);
+    //    std::cout << "Lambda: " << LAMBDA << std::endl;
 
     // Print the updated parameters.
     if (!silent)

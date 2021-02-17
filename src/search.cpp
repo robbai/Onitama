@@ -15,7 +15,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -10000, WINDOW = 44;
+constexpr int MIN_EVAL = -100000, WINDOW = 440;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -172,7 +172,6 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     // Move loop.
     Move best_move;
     int best_value = MIN_EVAL;
-    bool research = false;
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
 

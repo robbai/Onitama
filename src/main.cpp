@@ -26,7 +26,7 @@ int main() {
             {3, 4, 0, 2, 1}, {3, 4, 1, 2, 0}};
 
     // Go through every card combination.
-    uint8_t setup_index = 5;
+    uint8_t setup_index = 7;
     const uint32_t TOTAL_ITER = 4368;
     uint32_t iter = 0;
     for (uint8_t card_1 = 0; card_1 < CARD_NUM - 4; ++card_1) {
@@ -47,7 +47,7 @@ int main() {
                         ++iter;
                         std::cout << int(float(iter * 1000) / TOTAL_ITER) / 10.0 << "%"
                                   << std::endl;
-                        learn_game(&board, iter != TOTAL_ITER);
+                        learn_game(&board, iter % 10 && iter != TOTAL_ITER);
                         TTABLE.clear();
                     }
                 }
