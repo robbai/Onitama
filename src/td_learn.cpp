@@ -6,7 +6,7 @@
 #include "make_move.h"
 
 // Controls the effective maximum alpha.
-constexpr float LEARN_RATE = 20;
+constexpr float LEARN_RATE = 1;
 
 /*
  * Lambda controls how much the later score differences in a game influence the
@@ -53,7 +53,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
             d[m - 1] = s[m] - s[m - 1];
         if (m == game_length - 1)
             d[m] = game_result - s[m];
-        QUALITY_TOTAL[game_length - 1 - m] += 2 * abs(game_result - s[m]) - 1;
+        QUALITY_TOTAL[game_length - 1 - m] += 1 - abs(game_result - s[m]);
         ++QUALITY_FREQ[game_length - 1 - m];
     }
 
@@ -68,7 +68,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
                 continue;
             parameters[p] += 1;
             set_evaluation_parameters(parameters);
-            float ds = (tanh(CENTISTUDENT_FACTOR * evaluate(&leaves[m])) - s[m]) / 0.01;
+            float ds = (tanh(CENTISTUDENT_FACTOR * evaluate(&leaves[m])) - s[m]) / 0.001;
             parameters[p] -= 1;
             set_evaluation_parameters(parameters);
             if (ds == 0)
@@ -105,7 +105,8 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
         LAMBDA += std::pow(QUALITY_TOTAL[m] / QUALITY_FREQ[m], 1 / (game_length - 1 - m));
     }
     LAMBDA = fmin(1, LAMBDA / game_length);
-    //    std::cout << "Lambda: " << LAMBDA << std::endl;
+    if (!silent)
+        std::cout << "Lambda: " << LAMBDA << std::endl;
 
     // Print the updated parameters.
     if (!silent)
