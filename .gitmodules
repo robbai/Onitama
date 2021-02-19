@@ -1,6 +1,6 @@
 [submodule "lib/easywsclient"]
 	path = lib/easywsclient
-	url = https://github.com/dhbaird/easywsclient.git
+	url = https://github.com/TheBlocks/easywsclient.git
 [submodule "lib/rapidjson"]
 	path = lib/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
