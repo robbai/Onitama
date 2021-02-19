@@ -93,6 +93,8 @@ TBEntry *generate_tb() {
                         break;
                     }
                     for (uint8_t i = 0; i < next_size; ++i) {
+                        assert(is_legal(&next_pos[i]));
+                        assert(!is_game_over(&next_pos[i]));
                         Index new_index = get_index(&next_pos[i]);
                         TBEntry *new_entry = &entries[new_index];
                         if (new_entry->state != ILLEGAL &&
@@ -113,6 +115,8 @@ TBEntry *generate_tb() {
                         break;
                     }
                     for (uint8_t i = 0; i < next_size; ++i) {
+                        assert(is_legal(&next_pos[i]));
+                        assert(!is_game_over(&next_pos[i]));
                         Index new_index = get_index(&next_pos[i]);
                         TBEntry *new_entry = &entries[new_index];
                         if (new_entry->state != ILLEGAL && new_entry->state != WIN) {
@@ -163,6 +167,53 @@ TBEntry *generate_tb() {
     double duration = (clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
     printf("Took %.6s seconds\n", to_string(duration).c_str());
 
+    // Verify.
+#ifdef DEBUG
+    for (Index index = 0; index < MAX_INDEX; ++index) {
+        TBEntry *entry = &entries[index];
+        Position pos = from_index(index);
+        bool loss_found = false;
+        switch (entry->state) {
+            case LOSS:
+                next_size = gen_backward(&pos, next_pos);
+                for (uint8_t i = 0; i < next_size; ++i) {
+                    Index new_index = get_index(&next_pos[i]);
+                    TBEntry *new_entry = &entries[new_index];
+                    if (new_entry->state == ILLEGAL)
+                        continue;
+                    assert(new_entry->iter <= entry->iter + 1);
+                    assert(new_entry->state == WIN);
+                }
+                if (entry->iter) {
+                    next_size = gen_forward(&pos, next_pos);
+                    for (uint8_t i = 0; i < next_size; ++i) {
+                        Index new_index = get_index(&next_pos[i]);
+                        TBEntry *new_entry = &entries[new_index];
+                        assert(new_entry->iter <= entry->iter - 1);
+                        assert(new_entry->state == WIN);
+                    }
+                }
+                break;
+            case WIN:
+                assert(entry->iter);
+                next_size = gen_forward(&pos, next_pos);
+                for (uint8_t i = 0; i < next_size; ++i) {
+                    Index new_index = get_index(&next_pos[i]);
+                    TBEntry *new_entry = &entries[new_index];
+                    if (new_entry->state != LOSS)
+                        continue;
+                    loss_found = true;
+                    assert(new_entry->iter >= entry->iter - 1);
+                }
+                assert(loss_found);
+                break;
+            default:
+                assert(entry->state != SELF_LOSS);
+                break;
+        }
+    }
+#endif
+
     return entries;
 }
 
@@ -185,7 +236,7 @@ bool is_legal(Position *pos) {
         return false;
     if (pos->masters & pos->pieces[pos->turn] & (pos->turn ? 4u : 4194304u))
         return false;
-    // Rare case in which our last move must've captured the opponent's king on our home.
+    // Rare case in which our last move must've captured the opponent's master on our home.
     if (!(pos->pieces[pos->turn] & pos->masters) &&
         (pos->masters & (pos->turn ? 4u : 4194304u)) &&
         pos->masters == pos->pieces[!pos->turn])
@@ -408,17 +459,18 @@ uint8_t gen_backward(Position *pos, Position *backward) {
     Bitboard pieces = pos->pieces[!pos->turn];
     Bitboard targets = ~(pieces | pos->pieces[pos->turn]);
     uint16_t side_index = __builtin_ctz(pos->cards >> 32) * SQUARE_NUM;
+
+    // Our master must leave the enemy's home.
     if (pos->masters & pieces & (pos->turn ? 4194304u : 4u))
         pieces &= pos->masters;
+
+    // If the opponent has no master, we cannot undo a move "from" our home.
+    if (!(pos->masters & ~pieces))
+        pieces &= ~(pos->turn ? 4u : 4194304u);
+
     while (pieces) {
         uint8_t from = __builtin_ctz(pieces);
         Bitboard from_mask = (1u << from);
-
-        // If the opponent has no king, we cannot undo a move "from" our home.
-        if (!(pos->masters & ~pieces) && (from_mask & (pos->turn ? 4u : 4194304u))) {
-            pieces ^= from_mask;
-            continue;
-        }
 
         uint64_t cards = pos->cards;
         if (!pos->turn)
@@ -428,7 +480,7 @@ uint8_t gen_backward(Position *pos, Position *backward) {
 
         bool master_move = (pos->masters & from_mask);
 
-        // Our king cannot move backwards onto the opponent's home.
+        // Our master cannot move backwards onto the opponent's home.
         if (master_move)
             card_squares &= (pos->turn ? 29360127u : 33554427u);
 
