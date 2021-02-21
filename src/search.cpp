@@ -111,8 +111,8 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
 
     // Mate-distance pruning.
     if (!root) {
-        alpha = std::max(alpha, MIN_EVAL + ply);
-        beta = std::min(beta, -MIN_EVAL - ply - 1);
+        alpha = std::max(alpha, MIN_EVAL + board->move_count);
+        beta = std::min(beta, -MIN_EVAL - board->move_count - 1);
         if (alpha >= beta)
             return alpha;
     }
@@ -121,22 +121,21 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     TTEntry *entry = TTABLE.probe(board);
     uint32_t remaining_hash = (board->hash >> 32);
     bool hash_match = (entry->remaining_hash == remaining_hash);
-    if (!pv_node && hash_match && entry->depth >= depth) {
+    if (hash_match) {
         ++tt_hits;
-        switch (entry->type) {
-            case EXACT:
-                ++nodes;
+        if (!pv_node && entry->depth >= depth) {
+            switch (entry->type) {
+                case EXACT:
+                    return entry->value;
+                case LOWER:
+                    alpha = std::max(alpha, entry->value);
+                    break;
+                case UPPER:
+                    beta = std::min(beta, entry->value);
+                    break;
+            }
+            if (alpha >= beta)
                 return entry->value;
-            case LOWER:
-                alpha = std::max(alpha, entry->value);
-                break;
-            case UPPER:
-                beta = std::min(beta, entry->value);
-                break;
-        }
-        if (alpha >= beta) {
-            ++nodes;
-            return entry->value;
         }
     }
 
@@ -152,7 +151,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (following_pv)
             ++bump;
     }
-    if (entry->remaining_hash == remaining_hash) {
+    if (hash_match) {
         // TT ordering.
         if (bump_move(moves, size, entry->move, bump))
             ++bump;
