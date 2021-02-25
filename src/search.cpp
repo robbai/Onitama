@@ -184,8 +184,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     Move best_move;
     int best_value = MIN_EVAL;
     for (uint8_t i = 0; i < size; ++i) {
-        const Move move =
-                moves[(i + root * th * std::max(1, root_size / THREADS)) % size];
+        const Move move = moves[i];
 
         uint8_t reduction = (i < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
         if (reduction && reduction >= depth - 1) {
@@ -363,8 +362,10 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers, Board *bo
         auto search = [th, board, depth, alpha, beta](Thread *thread) {
             Line line = {};
             Board thread_board = board->copy();
-            thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta, 0, false,
-                           true, thread->pv_line.length, &line);
+            int value = thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta,
+                                       0, false, true, thread->pv_line.length, &line);
+            if (!thread->stop && alpha < value && value < beta)
+                thread->pv_line = line;
         };
         std::thread helper = std::thread(search, thread);
         helpers->push_back(std::move(helper));
@@ -423,8 +424,7 @@ Move start_search(Board *board, bool silent, float max_time) {
             beta = value + WINDOW;
 
             // Replace PV.
-            for (uint8_t th = 0; th < THREADS; ++th)
-                threads[th].pv_line = line;
+            threads[0].pv_line = line;
 
             int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
 
