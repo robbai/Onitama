@@ -3,6 +3,10 @@ project(Onitama)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (WIN32)
+    link_libraries(ws2_32)
+endif ()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-march=native")
 else ()

@@ -15,7 +15,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -10000, WINDOW = 44;
+constexpr int MIN_EVAL = -100000, WINDOW = 440;
 
 int PARAM = 0;
 
@@ -87,6 +87,12 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         return MIN_EVAL + board->move_count;
     }
 
+    // Win in one.
+    if (!root && board->has_winning_move()) {
+        ++nodes;
+        return -(MIN_EVAL + board->move_count + 1);
+    }
+
     // Probe TB.
     //    if (check_tb) {
     //        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
@@ -113,32 +119,31 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
 
     // Mate-distance pruning.
     if (!root) {
-        alpha = std::max(alpha, MIN_EVAL + ply);
-        beta = std::min(beta, -MIN_EVAL - ply - 1);
+        alpha = std::max(alpha, MIN_EVAL + board->move_count);
+        beta = std::min(beta, -MIN_EVAL - board->move_count - 1);
         if (alpha >= beta)
             return alpha;
     }
 
-    // Probe TT.
+    //    // Probe TT.
     //    TTEntry *entry = TTABLE.probe(board);
     //    uint32_t remaining_hash = (board->hash >> 32);
     //    bool hash_match = (entry->remaining_hash == remaining_hash);
-    //    if (!pv_node && hash_match && entry->depth >= depth) {
+    //    if (hash_match) {
     //        ++tt_hits;
-    //        switch (entry->type) {
-    //            case EXACT:
-    //                ++nodes;
+    //        if (!pv_node && entry->depth >= depth) {
+    //            switch (entry->type) {
+    //                case EXACT:
+    //                    return entry->value;
+    //                case LOWER:
+    //                    alpha = std::max(alpha, entry->value);
+    //                    break;
+    //                case UPPER:
+    //                    beta = std::min(beta, entry->value);
+    //                    break;
+    //            }
+    //            if (alpha >= beta)
     //                return entry->value;
-    //            case LOWER:
-    //                alpha = std::max(alpha, entry->value);
-    //                break;
-    //            case UPPER:
-    //                beta = std::min(beta, entry->value);
-    //                break;
-    //        }
-    //        if (alpha >= beta) {
-    //            ++nodes;
-    //            return entry->value;
     //        }
     //    }
 
@@ -154,15 +159,17 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (following_pv)
             ++bump;
     }
-    //    if (entry->remaining_hash == remaining_hash) {
+    //    if (hash_match) {
     //        // TT ordering.
     //        if (bump_move(moves, size, entry->move, bump))
     //            ++bump;
     //    }
-    for (uint8_t i = bump; i < size; ++i) {
-        // Winning-move ordering.
-        if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
-            ++bump;
+    // Winning-move ordering.
+    if (root) {
+        for (uint8_t i = bump; i < size; ++i) {
+            if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
+                ++bump;
+        }
     }
     for (uint8_t i = bump; i < size; ++i) {
         // Capture ordering.
@@ -365,7 +372,7 @@ Move start_search(Board *board, bool silent, float max_time) {
             if (!silent) {
                 std::string value_str;
                 if (mate_plies > MAX_DEPTH + 255) {
-                    value_str = std::to_string(value);
+                    value_str = std::to_string(to_centi(value));
                 } else {
                     int mate_depth =
                             static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
