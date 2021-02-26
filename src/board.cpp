@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "move_bits.h"
+#include "move_tables.h"
 
 // This function only checks for whether the non-moving player has won.
 bool Board::game_over() {
@@ -37,4 +38,28 @@ bool Board::winning_move(Move move) {
     Bitboard to = (1u << MoveBits::to(move));
     return (this->pieces[!this->turn][MASTER] & to) ||
            (MoveBits::piece_type(move) && (to & HOMES[!this->turn]));
+}
+
+bool Board::has_winning_move() {
+    uint8_t opponent_sq = (this->turn ? 2 : 22);
+    for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
+        if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
+                          opponent_sq) *
+                                 PLAYERS_NUM +
+                         !this->turn]) &
+            this->pieces[this->turn][MASTER])
+            return true;
+    }
+    opponent_sq = __builtin_ctz(this->pieces[!this->turn][MASTER]);
+    Bitboard our_pieces =
+            this->pieces[this->turn][STUDENT] | this->pieces[this->turn][MASTER];
+    for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
+        if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
+                          opponent_sq) *
+                                 PLAYERS_NUM +
+                         !this->turn]) &
+            our_pieces)
+            return true;
+    }
+    return false;
 }
