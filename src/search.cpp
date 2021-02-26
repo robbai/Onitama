@@ -85,6 +85,12 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         return MIN_EVAL + board->move_count;
     }
 
+    // Win in one.
+    if (!root && board->has_winning_move()) {
+        ++nodes;
+        return -(MIN_EVAL + board->move_count + 1);
+    }
+
     // Probe TB.
     if (check_tb) {
         uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
@@ -156,10 +162,12 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
         if (bump_move(moves, size, entry->move, bump))
             ++bump;
     }
-    for (uint8_t i = bump; i < size; ++i) {
-        // Winning-move ordering.
-        if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
-            ++bump;
+    // Winning-move ordering.
+    if (root) {
+        for (uint8_t i = bump; i < size; ++i) {
+            if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
+                ++bump;
+        }
     }
     for (uint8_t i = bump; i < size; ++i) {
         // Capture ordering.
