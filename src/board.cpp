@@ -42,13 +42,15 @@ bool Board::winning_move(Move move) {
 
 bool Board::has_winning_move() {
     uint8_t opponent_sq = (this->turn ? 2 : 22);
-    for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-        if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
-                          opponent_sq) *
-                                 PLAYERS_NUM +
-                         !this->turn]) &
-            this->pieces[this->turn][MASTER])
-            return true;
+    if (!(HOMES[!this->turn] & this->pieces[this->turn][STUDENT])) {
+        for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
+            if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
+                              opponent_sq) *
+                                     PLAYERS_NUM +
+                             !this->turn]) &
+                this->pieces[this->turn][MASTER])
+                return true;
+        }
     }
     opponent_sq = __builtin_ctz(this->pieces[!this->turn][MASTER]);
     Bitboard our_pieces =
