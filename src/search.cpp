@@ -17,7 +17,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 440;
+constexpr int MIN_EVAL = -100000, WINDOW = 610;
 
 uint8_t THREADS = std::thread::hardware_concurrency();
 
@@ -82,6 +82,12 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     if (board->game_over()) {
         ++nodes;
         return MIN_EVAL + board->move_count;
+    }
+
+    // Win in one.
+    if (!root && board->has_winning_move()) {
+        ++nodes;
+        return -(MIN_EVAL + board->move_count + 1);
     }
 
     // Probe TB.
@@ -167,10 +173,13 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (bump_move(moves, size, entry->move, bump))
                 ++bump;
         }
-        for (uint8_t i = bump; i < size; ++i) {
-            // Winning-move ordering.
-            if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
-                ++bump;
+        if (root) {
+            for (uint8_t i = bump; i < size; ++i) {
+                // Winning-move ordering.
+                if (board->winning_move(moves[i]) &&
+                    bump_move(moves, size, moves[i], bump))
+                    ++bump;
+            }
         }
         for (uint8_t i = bump; i < size; ++i) {
             // Capture ordering.
