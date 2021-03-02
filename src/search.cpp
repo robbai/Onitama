@@ -188,15 +188,15 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                 size = gen_moves(board, moves, targets);
 
                 // Filter out PV and TT moves.
-                for (uint8_t i = 0; i < size; ++i) {
+                for (uint8_t i = size; i > 0; --i) {
                     if (filtered_pv_move && filtered_tt_move)
                         break;
-                    if (!filtered_pv_move && moves[i] == pv_line.moves[ply]) {
-                        std::swap(moves[i], moves[size - 1]);
+                    if (!filtered_pv_move && moves[i - 1] == pv_line.moves[ply]) {
+                        std::swap(moves[i - 1], moves[size - 1]);
                         --size;
                         filtered_pv_move = true;
-                    } else if (!filtered_tt_move && moves[i] == entry->move) {
-                        std::swap(moves[i], moves[size - 1]);
+                    } else if (!filtered_tt_move && moves[i - 1] == entry->move) {
+                        std::swap(moves[i - 1], moves[size - 1]);
                         --size;
                         filtered_tt_move = true;
                     }
