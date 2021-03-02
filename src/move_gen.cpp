@@ -67,3 +67,29 @@ uint8_t count_moves(Board *board) {
 
     return total;
 }
+
+bool move_exists(Board *board, Move move) {
+    uint8_t from = MoveBits::from(move);
+    bool piece_type = MoveBits::piece_type(move);
+
+    // No piece to start with.
+    if (!((1u << from) & board->pieces[board->turn][piece_type]))
+        return false;
+
+    // Already a friendly on that destination.
+    uint8_t to = MoveBits::to(move);
+    if ((1u << to) &
+        (board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER]))
+        return false;
+
+    // Must be a capture.
+    if (MoveBits::capture(move) && !((1u << to) & (board->pieces[!board->turn][STUDENT] |
+                                                   board->pieces[!board->turn][MASTER])))
+        return false;
+
+    // Card cannot move to this destination.
+    Card card = board->cards[board->turn][MoveBits::card_index(move)];
+    Bitboard squares =
+            MOVE_TABLES[(card * SQUARE_NUM + from) * PLAYERS_NUM + board->turn];
+    return squares & (1u << to);
+}
