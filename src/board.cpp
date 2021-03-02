@@ -40,26 +40,23 @@ bool Board::winning_move(Move move) {
            (MoveBits::piece_type(move) && (to & HOMES[!this->turn]));
 }
 
-bool Board::has_winning_move() {
-    uint8_t opponent_sq = (this->turn ? 2 : 22);
-    if (!(HOMES[!this->turn] & this->pieces[this->turn][STUDENT])) {
+bool Board::has_winning_move(bool turn) {
+    uint8_t opponent_sq = (turn ? 2 : 22);
+    if (!(HOMES[!turn] & this->pieces[turn][STUDENT])) {
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-            if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
-                              opponent_sq) *
+            if ((MOVE_TABLES[(this->cards[turn][card_index] * SQUARE_NUM + opponent_sq) *
                                      PLAYERS_NUM +
-                             !this->turn]) &
-                this->pieces[this->turn][MASTER])
+                             !turn]) &
+                this->pieces[turn][MASTER])
                 return true;
         }
     }
-    opponent_sq = __builtin_ctz(this->pieces[!this->turn][MASTER]);
-    Bitboard our_pieces =
-            this->pieces[this->turn][STUDENT] | this->pieces[this->turn][MASTER];
+    opponent_sq = __builtin_ctz(this->pieces[!turn][MASTER]);
+    Bitboard our_pieces = this->pieces[turn][STUDENT] | this->pieces[turn][MASTER];
     for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-        if ((MOVE_TABLES[(this->cards[this->turn][card_index] * SQUARE_NUM +
-                          opponent_sq) *
+        if ((MOVE_TABLES[(this->cards[turn][card_index] * SQUARE_NUM + opponent_sq) *
                                  PLAYERS_NUM +
-                         !this->turn]) &
+                         !turn]) &
             our_pieces)
             return true;
     }

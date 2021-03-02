@@ -152,6 +152,7 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
     Line line;
     Move best_move;
     int best_value = MIN_EVAL;
+    bool win_threat_extension = (depth == 1 && board->has_winning_move(!board->turn));
 
     // Stage loop.
     Move *moves = ALL_MOVES[ply];
@@ -217,18 +218,24 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
             const Move move = moves[move_index];
             assert(move_exists(board, move));
 
-            uint8_t reduction = (move_num < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
-            if (reduction && reduction >= depth - 1) {
-                // History pruning.
-                if (!following_pv) {
-                    uint8_t from = MoveBits::from(move);
-                    uint8_t to = MoveBits::to(move);
-                    bool piece_type = MoveBits::piece_type(move);
-                    if (!HISTORY[board->turn][from][to][piece_type])
-                        continue;
+            // Reductions.
+            int8_t reduction = 0;
+            if (win_threat_extension) {
+                // Extension if one ply from leaf and opponent is threatening win.
+                reduction = -1;
+            } else {
+                int8_t reduction = (move_num < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
+                if (reduction && reduction >= depth - 1) {
+                    // History pruning.
+                    if (!following_pv) {
+                        uint8_t from = MoveBits::from(move);
+                        uint8_t to = MoveBits::to(move);
+                        bool piece_type = MoveBits::piece_type(move);
+                        if (!HISTORY[board->turn][from][to][piece_type])
+                            continue;
+                    }
                 }
             }
-
             if (reduction > depth - 1)
                 reduction = depth - 1;
 
@@ -244,14 +251,15 @@ int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                                 root || MoveBits::capture(move), false, following_pv,
                                 &line);
                 if (value > alpha) {
-                    if (reduction)
+                    if (reduction > 0)
                         value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
                                         root || MoveBits::capture(move), pv_node,
                                         following_pv, &line);
                     if (value > alpha)
-                        value = -search(board, depth - 1, -beta, -alpha, ply + 1,
-                                        root || MoveBits::capture(move), pv_node,
-                                        following_pv, &line);
+                        value = -search(
+                                board, depth - 1 - (reduction < 0 ? reduction : 0), -beta,
+                                -alpha, ply + 1, root || MoveBits::capture(move), pv_node,
+                                following_pv, &line);
                 }
             }
 
