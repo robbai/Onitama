@@ -19,7 +19,7 @@
 
 constexpr int MIN_EVAL = -100000, WINDOW = 610;
 
-uint8_t THREADS = std::thread::hardware_concurrency();
+const uint8_t NUM_THREADS = std::thread::hardware_concurrency();
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -358,7 +358,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers, Board *board,
                    int depth, int alpha, int beta) {
-    for (uint8_t th = 1; th < THREADS; ++th) {
+    for (uint8_t th = 1; th < NUM_THREADS; ++th) {
         Thread *thread = &threads[th];
         thread->stop = false;
 
@@ -380,89 +380,94 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers, Board *bo
 }
 
 void end_helpers(Thread *threads, std::vector<std::thread> *helpers) {
-    for (uint8_t th = (THREADS - 1); th > 0; --th) {
+    for (uint8_t th = (NUM_THREADS - 1); th > 0; --th) {
         threads[th].stop = true;
         helpers->back().join();
         helpers->pop_back();
     }
 }
 
-Move start_search(Board *board, bool silent, float max_time) {
-    // Setup threads.
-    Thread threads[THREADS];
-    std::vector<std::thread> helpers;
-    for (uint8_t th = 0; th < THREADS; ++th) {
-        Thread *thread = &threads[th];
-        thread->th = th;
-        thread->stop = false;
-        thread->pv_line = {};
-        thread->reset_history();
-    }
-
-    // Setup main search.
-    nodes = 0;
-    tb_hits = 0;
-    tt_hits = 0;
-    clock_t start = clock();
-    int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
-
-    // Iterative deepening.
-    while (depth <= MAX_DEPTH) {
-        Line line;
-        int value;
-
-        if (depth == 1) {
-            value = threads[0].search(board, depth, alpha, beta, 0, false, true,
-                                      threads[0].pv_line.length, &line);
-        } else {
-            start_helpers(threads, &helpers, board, depth, alpha, beta);
-            value = threads[0].search(board, depth, alpha, beta, 0, false, true,
-                                      threads[0].pv_line.length, &line);
-            end_helpers(threads, &helpers);
+Move start_search(Board *board, float search_time, bool silent) {
+    auto search = [&board, silent](Thread *threads) {
+        // Setup threads.
+        std::vector<std::thread> helpers;
+        for (uint8_t th = 0; th < NUM_THREADS; ++th) {
+            Thread *thread = &threads[th];
+            thread->th = th;
+            thread->stop = false;
+            thread->pv_line = {};
+            thread->reset_history();
         }
 
-        double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
+        // Setup main search.
+        nodes = 0;
+        tb_hits = 0;
+        tt_hits = 0;
+        clock_t start = clock();
+        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
-        // Window.
-        if (value <= alpha || value >= beta) {
-            alpha = MIN_EVAL, beta = -MIN_EVAL;
-        } else {
-            alpha = value - WINDOW;
-            beta = value + WINDOW;
+        // Iterative deepening.
+        while (depth <= MAX_DEPTH) {
+            Line line;
+            int value;
 
-            // Replace PV.
-            threads[0].pv_line = line;
-
-            int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
-
-            // Output.
-            if (!silent) {
-                std::string value_str;
-                if (mate_plies > MAX_DEPTH + 255) {
-                    value_str = std::to_string(to_centi(value));
-                } else {
-                    int mate_depth =
-                            static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
-                    value_str = "#" + std::to_string(mate_depth);
-                }
-                printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, "
-                       "TT-hits "
-                       "= %8llu, %.3fs, "
-                       "PV = [%s]\n",
-                       depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
-                       verify_pv(board, &threads[0].pv_line, depth).c_str());
+            if (depth == 1) {
+                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                                          threads[0].pv_line.length, &line);
+            } else {
+                start_helpers(threads, &helpers, board, depth, alpha, beta);
+                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                                          threads[0].pv_line.length, &line);
+                end_helpers(threads, &helpers);
             }
 
-            // End search by mate detection.
-            if (mate_plies <= depth)
+            // End search by timeout.
+            if (threads[0].stop)
                 break;
-            ++depth;
-        }
 
-        // End search by timeout.
-        if (elapsed > max_time)
-            break;
-    }
+            double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
+
+            // Window.
+            if (value <= alpha || value >= beta) {
+                alpha = MIN_EVAL, beta = -MIN_EVAL;
+            } else {
+                alpha = value - WINDOW;
+                beta = value + WINDOW;
+
+                // Replace PV.
+                threads[0].pv_line = line;
+
+                int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
+
+                // Output.
+                if (!silent) {
+                    std::string value_str;
+                    if (mate_plies > MAX_DEPTH + 255) {
+                        value_str = std::to_string(to_centi(value));
+                    } else {
+                        int mate_depth = static_cast<int>(
+                                std::copysign((mate_plies + 1) / 2, value));
+                        value_str = "#" + std::to_string(mate_depth);
+                    }
+                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, "
+                           "TT-hits "
+                           "= %8llu, %.3fs, "
+                           "PV = [%s]\n",
+                           depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
+                           verify_pv(board, &threads[0].pv_line, depth).c_str());
+                }
+
+                ++depth;
+            }
+        }
+    };
+
+    Thread threads[NUM_THREADS];
+    std::thread search_thread(search, &threads[0]);
+    sleep(search_time);
+    threads[0].stop = true;
+    if (search_thread.joinable())
+        search_thread.join();
 
     return threads[0].pv_line.moves[0];
 }

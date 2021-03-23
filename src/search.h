@@ -6,8 +6,6 @@
 
 constexpr uint8_t MAX_DEPTH = 64;
 
-Move start_search(Board *board, bool silent = false, float max_time = 1);
-
 Board get_pv_leaf(Board board);
 
 struct Line {
@@ -34,5 +32,7 @@ class Thread {
     int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                bool pv_node, bool following_pv, Line *curr_line);
 };
+
+Move start_search(Board *board, float search_time = 1, bool silent = false);
 
 #endif  // ONITAMA_SEARCH_H
