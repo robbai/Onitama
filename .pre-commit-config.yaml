@@ -23,12 +23,13 @@ repos:
         args: [-style=file]
       - id: cpplint
         args: [
-            "--filter=-legal/copyright,
-            -build/include_subdir,
+            "--filter=-build/c++11,
             -build/header_guard,
-            -whitespace/line_length,
+            -build/include_subdir,
+            -legal/copyright,
+            -runtime/arrays,
             -runtime/references,
             -runtime/string,
             -whitespace/braces,
-            -runtime/arrays,"
+            -whitespace/line_length,"
         ]
