@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <algorithm>
 #include <ctime>
 #include <string>
@@ -19,8 +20,6 @@
 #include "evaluate.h"
 
 constexpr int MIN_EVAL = -100000, WINDOW = 610;
-
-const uint8_t NUM_THREADS = std::thread::hardware_concurrency();
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -387,9 +386,9 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
     quicksort(moves, sort_values, bump, size);
 }
 
-void start_helpers(Thread *threads, std::vector<std::thread> *helpers, Board *board,
-                   int depth, int alpha, int beta) {
-    for (uint8_t th = 1; th < NUM_THREADS; ++th) {
+void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
+                   uint8_t num_threads, Board *board, int depth, int alpha, int beta) {
+    for (uint8_t th = 1; th < num_threads; ++th) {
         Thread *thread = &threads[th];
         thread->stop = false;
 
@@ -410,19 +409,20 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers, Board *bo
     }
 }
 
-void end_helpers(Thread *threads, std::vector<std::thread> *helpers) {
-    for (uint8_t th = (NUM_THREADS - 1); th > 0; --th) {
+void end_helpers(Thread *threads, std::vector<std::thread> *helpers,
+                 uint8_t num_threads) {
+    for (uint8_t th = (num_threads - 1); th > 0; --th) {
         threads[th].stop = true;
         helpers->back().join();
         helpers->pop_back();
     }
 }
 
-Move start_search(Board *board, float search_time, bool silent) {
-    auto search = [&board, silent](Thread *threads) {
+Move start_search(Board *board, float search_time, bool silent, uint8_t num_threads) {
+    auto search = [&board, silent, num_threads](Thread *threads) {
         // Setup threads.
         std::vector<std::thread> helpers;
-        for (uint8_t th = 0; th < NUM_THREADS; ++th) {
+        for (uint8_t th = 0; th < num_threads; ++th) {
             Thread *thread = &threads[th];
             thread->th = th;
             thread->stop = false;
@@ -446,14 +446,14 @@ Move start_search(Board *board, float search_time, bool silent) {
                 value = threads[0].search(board, depth, alpha, beta, 0, false, true,
                                           threads[0].pv_line.length, &line);
             } else {
-                start_helpers(threads, &helpers, board, depth, alpha, beta);
+                start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
                 value = threads[0].search(board, depth, alpha, beta, 0, false, true,
                                           threads[0].pv_line.length, &line);
-                end_helpers(threads, &helpers);
+                end_helpers(threads, &helpers, num_threads);
             }
 
             // End search by timeout.
-            if (threads[0].stop)
+            if (threads[0].stop && depth != 1)
                 break;
 
             double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
@@ -493,9 +493,9 @@ Move start_search(Board *board, float search_time, bool silent) {
         }
     };
 
-    Thread threads[NUM_THREADS];
+    Thread threads[num_threads];
     std::thread search_thread(search, &threads[0]);
-    sleep(search_time);
+    usleep(1000000 * search_time);
     threads[0].stop = true;
     if (search_thread.joinable())
         search_thread.join();

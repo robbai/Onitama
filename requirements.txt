@@ -1,2 +1,5 @@
+black
 cpplint
+flake8
+isort
 pre-commit

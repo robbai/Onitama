@@ -1,10 +1,12 @@
 #ifndef ONITAMA_SEARCH_H
 #define ONITAMA_SEARCH_H
 
-
+#include <thread>
 #include "board.h"
 
 constexpr uint8_t MAX_DEPTH = 64;
+
+const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
 Board get_pv_leaf(Board board);
 
@@ -33,6 +35,7 @@ class Thread {
                bool pv_node, bool following_pv, Line *curr_line);
 };
 
-Move start_search(Board *board, float search_time = 1, bool silent = false);
+Move start_search(Board *board, float search_time = 1, bool silent = false,
+                  uint8_t num_threads = MAX_THREADS);
 
 #endif  // ONITAMA_SEARCH_H

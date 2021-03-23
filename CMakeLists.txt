@@ -55,6 +55,8 @@ add_executable(
         src/tt/zobrist.h
         src/evaluate.cpp
         src/evaluate.h
+        src/runner.cpp
+        src/runner.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)
