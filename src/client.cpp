@@ -117,10 +117,8 @@ void Client::receive_state(rapidjson::Document &doc) {
     set_hash(&new_board);
 
     // Setup and generate tablebase.
-    if (!generated_tb) {
-        generated_tb = true;
+    if (!GENERATED_TB)
         setup_and_generate_tb(&new_board);
-    }
 
     std::cout << std::endl << pretty_board(&new_board) << std::endl;
 
