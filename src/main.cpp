@@ -2,11 +2,15 @@
 #include "client.h"
 #include "tt/zobrist.h"
 #include "evaluate.h"
+#include "runner.h"
 
-int main() {
+int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
+
+    if (argc == 2)
+        return use_runner();
 
     std::string match_id;
     std::cout << "Match ID: ";
