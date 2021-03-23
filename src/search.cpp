@@ -213,22 +213,20 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         make_move(board, move);
 
         int value;
+        bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
         if (!i) {
-            value = -search(board, depth - 1, -beta, -alpha, ply + 1,
-                            root || MoveBits::capture(move), pv_node, following_pv,
-                            &line);
+            value = -search(board, depth - 1, -beta, -alpha, ply + 1, now_check_tb,
+                            pv_node, following_pv, &line);
         } else {
             value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                            root || MoveBits::capture(move), false, following_pv, &line);
+                            now_check_tb, false, following_pv, &line);
             if (value > alpha) {
                 if (reduction)
                     value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                    root || MoveBits::capture(move), pv_node,
-                                    following_pv, &line);
+                                    now_check_tb, pv_node, following_pv, &line);
                 if (value > alpha)
                     value = -search(board, depth - 1, -beta, -alpha, ply + 1,
-                                    root || MoveBits::capture(move), pv_node,
-                                    following_pv, &line);
+                                    now_check_tb, pv_node, following_pv, &line);
             }
         }
 

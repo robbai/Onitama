@@ -1,7 +1,7 @@
 #include "tb_probe.h"
 
-#include "tb_gen.h"
 
+bool GENERATED_TB = false;
 
 TBEntry *entries;
 
@@ -35,4 +35,5 @@ void setup_and_generate_tb(Board *board) {
     Tablebase::CARD_LIST[3] = board->cards[BLACK][1];
     Tablebase::CARD_LIST[4] = board->side_card;
     entries = generate_tb();
+    GENERATED_TB = true;
 }
