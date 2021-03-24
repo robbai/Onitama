@@ -10,6 +10,9 @@ const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
 Board get_pv_leaf(Board board);
 
+Move start_search(Board *board, float search_time = 1, bool silent = false,
+                  uint8_t num_threads = MAX_THREADS);
+
 struct Line {
     int length = 0;         // Number of moves in the line.
     Move moves[MAX_DEPTH];  // The line.
@@ -34,8 +37,5 @@ class Thread {
     int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
                bool pv_node, bool following_pv, Line *curr_line);
 };
-
-Move start_search(Board *board, float search_time = 1, bool silent = false,
-                  uint8_t num_threads = MAX_THREADS);
 
 #endif  // ONITAMA_SEARCH_H

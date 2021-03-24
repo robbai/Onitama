@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional
 from subprocess import PIPE, Popen
 
 from game import Game
+from cards import CARD_NAMES
 
 
 class Match:
@@ -51,24 +52,29 @@ class Match:
     def quit_engines(self):
         self.send("quit")
 
-    def run_match(self, search_time: float = 0.005, draw_plies: int = 96):
+    def run_match(self, search_time: float = 0.01, draw_plies: int = 96):
         game1: Game = Game()
         game2: Game = game1.copy()
+        print("Cards: " + ", ".join(CARD_NAMES[c] for c in game1.cards))
 
         for i, game in enumerate((game1, game2,)):
-            new_setup: str = "new " + " ".join([str(c) for c in game.cards])
+            new_setup: str = "new " + " ".join(str(c) for c in game.cards)
             self.send(new_setup)
-            for j in range(draw_plies):
+            print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
+            for _ in range(draw_plies):
                 moving: bool = game.turn ^ i
                 move: str = self.ask(moving, "get " + str(search_time))
                 game.move(move)
                 if game.game_over():
                     self.score[moving] += 1
+                    print("1-0" if game.turn else "0-1")
                     break
                 self.send("give " + move)
+                print(move, end=" ", flush=True)
             else:
                 self.score[0] += 0.5
                 self.score[1] += 0.5
+                print("1/2-1/2")
 
     def send(self, message: str):
         for index, engine in enumerate(self.engines):
@@ -80,7 +86,6 @@ class Match:
         engine.stdin.write(message + "\n")
         engine.stdin.flush()
         message: str = message.split(" ")[0] + " "
-        while True:
-            output: str = engine.stdout.readline()
+        for output in iter(engine.stdout.readline, ""):
             if output.startswith(message):
                 return output[len(message) : -1]

@@ -54,7 +54,7 @@ int use_runner() {
         } else if (command == "get") {
             string search_time;
             stream >> search_time;
-            Move move = start_search(&board, std::stof(search_time), true, 1);
+            Move move = start_search(&board, std::stof(search_time), false, 1);
             std::cout << "get " << move_string(&board, move) << std::endl;
         } else if (command == "give") {
             string given_move;
