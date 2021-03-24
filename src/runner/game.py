@@ -36,7 +36,7 @@ class Game:
     def __init__(self, cards: List[int] = None):
         self.cards = cards
         if not cards:
-            self.cards: List[int] = sample(range(NUM_CARDS), NUM_CARDS)[:5]
+            self.cards: List[int] = sample(range(NUM_CARDS), 5)
         self.turn: bool = False
         self.pieces: List[int] = [
             1,

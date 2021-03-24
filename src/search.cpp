@@ -1,4 +1,3 @@
-#include <unistd.h>
 #include <algorithm>
 #include <ctime>
 #include <string>
@@ -7,6 +6,7 @@
 #include <cstring>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 #include "board.h"
 #include "make_move.h"
@@ -422,8 +422,11 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             }
 
             // End search by timeout.
-            if (threads[0].stop)
+            if (threads[0].stop) {
+                if (depth == 1)
+                    threads[0].pv_line = line;
                 break;
+            }
 
             double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
@@ -464,7 +467,8 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
 
     Thread threads[num_threads];
     std::thread search_thread(search, &threads[0]);
-    usleep(1000000 * search_time);
+    auto sleep_time = std::chrono::milliseconds(static_cast<int>(search_time * 1000));
+    std::this_thread::sleep_for(sleep_time);
     threads[0].stop = true;
     if (search_thread.joinable())
         search_thread.join();
