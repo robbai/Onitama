@@ -15,7 +15,7 @@ class Match:
             for path in engine_paths
         ]
         self.engine_names: List[str] = [
-            self.ask(i, "name") for i in range(len(engine_paths))
+            self.ask(i, "name").title() for i in range(len(engine_paths))
         ]
         self.score: List[int, int] = [0, 0]
 
@@ -55,7 +55,10 @@ class Match:
     def run_match(self, search_time: float = 0.1, draw_plies: int = 96):
         game1: Game = Game()
         game2: Game = game1.copy()
-        print("Cards: " + ", ".join(CARD_NAMES[c] for c in game1.cards))
+        print(
+            "Cards: "
+            + ", ".join(CARD_NAMES[c] + " (" + str(c) + ")" for c in game1.cards)
+        )
 
         for i, game in enumerate((game1, game2,)):
             new_setup: str = "new " + " ".join(str(c) for c in game.cards)
