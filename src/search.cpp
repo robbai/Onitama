@@ -422,7 +422,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             }
 
             // End search by timeout.
-            if (threads[0].stop && depth != 1)
+            if (threads[0].stop)
                 break;
 
             double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
