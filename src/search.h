@@ -23,7 +23,7 @@ class Thread {
     uint16_t history[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM][PIECE_TYPES_NUM];
     int sort_values[MAX_MOVES] = {};
 
-    void sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump);
+    void sort_moves(Board *board, Move *moves, uint8_t size);
     int q_search(Board *board, int alpha, int beta, int ply);
 
  public:
@@ -35,7 +35,7 @@ class Thread {
     void reset_history();
     Board get_pv_leaf(Board board);
     int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-               bool pv_node, bool following_pv, Line *curr_line);
+               bool following_pv, Line *curr_line);
 };
 
 #endif  // ONITAMA_SEARCH_H

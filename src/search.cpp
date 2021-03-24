@@ -27,6 +27,7 @@ uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
+
 enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
 
 std::string verify_pv(Board *board, Line *line, int depth) {
@@ -73,12 +74,13 @@ Board Thread::get_pv_leaf(Board board) {
 }
 
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-                   bool pv_node, bool following_pv, Line *curr_line) {
+                   bool following_pv, Line *curr_line) {
     if (stop)
         return 0;
 
     int alpha_original = alpha;
     bool root = !ply;
+    bool pv_node = beta - alpha != 1;
 
     // Terminal.
     if (board->game_over()) {
@@ -111,18 +113,20 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         }
     }
 
-    // Leaf.
-    if (depth == 0)
-        return q_search(board, alpha, beta, ply);
-    ++nodes;
-
     // Mate-distance pruning.
     if (!root) {
         alpha = std::max(alpha, MIN_EVAL + board->move_count);
         beta = std::min(beta, -MIN_EVAL - board->move_count - 1);
-        if (alpha >= beta)
+        if (alpha >= beta) {
+            ++nodes;
             return alpha;
+        }
     }
+
+    // Leaf.
+    if (depth == 0)
+        return q_search(board, alpha, beta, ply);
+    ++nodes;
 
     // Probe TT.
     TTEntry *entry = TTABLE.probe(board);
@@ -150,13 +154,12 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     Line line;
     Move best_move;
     int best_value = MIN_EVAL;
-    bool win_threat_extension = (depth == 1 && board->has_winning_move(!board->turn));
 
     // Stage loop.
-    Move *moves = ALL_MOVES[ply];
+    Move *moves = move_lists[ply];
     int8_t move_num = -1;
-    bool filtered_pv_move = true, filtered_tt_move = true;
-    for (uint8_t stage = CAPTURE; stage < STAGE_NUM; ++stage) {
+    bool searched_pv_move = false, searched_tt_move = false;
+    for (uint8_t stage = PV; stage < STAGE_NUM; ++stage) {
         uint8_t size = 0;
         switch (stage) {
             case PV:
@@ -164,7 +167,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     if (move_exists(board, pv_line.moves[ply])) {
                         moves[0] = pv_line.moves[ply];
                         size = 1;
-                        filtered_pv_move = false;
+                        searched_pv_move = true;
                     } else {
                         following_pv = false;
                     }
@@ -175,7 +178,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     move_exists(board, entry->move)) {
                     moves[0] = entry->move;
                     size = 1;
-                    filtered_tt_move = false;
+                    searched_tt_move = true;
                 }
                 break;
             default:
@@ -186,53 +189,42 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     targets = ~targets;
                 size = gen_moves(board, moves, targets);
 
-                // Filter out PV and TT moves.
-                for (uint8_t i = size; i > 0; --i) {
-                    if (filtered_pv_move && filtered_tt_move)
-                        break;
-                    if (!filtered_pv_move && moves[i - 1] == pv_line.moves[ply]) {
-                        std::swap(moves[i - 1], moves[size - 1]);
-                        --size;
-                        filtered_pv_move = true;
-                    } else if (!filtered_tt_move && moves[i - 1] == entry->move) {
-                        std::swap(moves[i - 1], moves[size - 1]);
-                        --size;
-                        filtered_tt_move = true;
-                    }
-                }
-                assert(filtered_pv_move);
-                assert(filtered_tt_move);
-
-                // Sort quiets.
+                // Sort quiet moves.
                 if (stage == QUIET)
-                    sort_moves(board, moves, size, 0);
+                    sort_moves(board, moves, size);
 
                 break;
         }
 
+        following_pv &= stage == PV;
+
         // Move loop.
         for (uint8_t move_index = 0; move_index < size; ++move_index) {
-            ++move_num;
             const Move move = moves[move_index];
-            assert(move_exists(board, move));
+
+            // Filter out PV and TT moves.
+            if (stage >= CAPTURE) {
+                if (searched_pv_move && move == pv_line.moves[ply])
+                    continue;
+                if (searched_tt_move && move == entry->move)
+                    continue;
+            }
+
+            ++move_num;
 
             // Reductions.
             int8_t reduction = 0;
-            if (win_threat_extension) {
-                // Extension if one ply from leaf and opponent is threatening win.
-                reduction = -1;
-            } else {
-                int8_t reduction = (move_num < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
-                if (reduction && reduction >= depth - 1) {
-                    // History pruning.
-                    if (!following_pv) {
-                        uint8_t from = MoveBits::from(move);
-                        uint8_t to = MoveBits::to(move);
-                        bool piece_type = MoveBits::piece_type(move);
-                        if (!HISTORY[board->turn][from][to][piece_type])
-                            continue;
-                    }
+            if (stage == QUIET) {
+                if (depth > 2 && move_num) {
+                    // LMR.
+                    reduction = 1 + move_num / 6;
+
+                    if (!pv_node)
+                        reduction += 1;
                 }
+
+                if (reduction < 0)
+                    reduction = 0;
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;
@@ -242,20 +234,24 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             int value;
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
-                value = -search(board, depth - 1, -beta, -alpha, ply + 1, now_check_tb,
-                                pv_node, following_pv, &line);
+                value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
+                                now_check_tb, following_pv, &line);
             } else {
+                // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                now_check_tb, false, following_pv, &line);
+                                now_check_tb, following_pv, &line);
+
+                // Null window.
+                if (value > alpha && reduction > 0) {
+                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
+                                    now_check_tb, following_pv, &line);
+                }
+
+                // Full search.
                 if (value > alpha) {
-                    if (reduction > 0)
-                        value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                        now_check_tb, pv_node, following_pv, &line);
-                    if (value > alpha)
-                        value = -search(board,
-                                        depth - 1 - (reduction < 0 ? reduction : 0),
-                                        -beta, -alpha, ply + 1, now_check_tb, pv_node,
-                                        following_pv, &line);
+                    value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
+                                    -beta, -alpha, ply + 1, now_check_tb, following_pv,
+                                    &line);
                 }
             }
 
@@ -276,7 +272,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                             uint8_t from = MoveBits::from(move);
                             uint8_t to = MoveBits::to(move);
                             bool piece_type = MoveBits::piece_type(move);
-                            HISTORY[board->turn][from][to][piece_type] += depth * depth;
+                            history[board->turn][from][to][piece_type] += depth * depth;
                         }
 
                         break;
@@ -372,9 +368,9 @@ void Thread::reset_history() {
                     history[i][j][k][l] = 0;
 }
 
-void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
-    for (uint8_t i = bump; i < size; ++i) {
-        Move move = moves[i];
+void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
+    for (uint8_t i = 0; i < size; ++i) {
+        const Move move = moves[i];
 
         // History heuristic.
         uint8_t from = MoveBits::from(move);
@@ -383,7 +379,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
         sort_values[i] = history[board->turn][from][to][piece_type];
     }
 
-    quicksort(moves, sort_values, bump, size);
+    quicksort(moves, sort_values, 0, size);
 }
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
@@ -400,7 +396,7 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
             Line line = {};
             Board thread_board = board->copy();
             int value = thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta,
-                                       0, false, true, thread->pv_line.length, &line);
+                                       0, false, thread->pv_line.length, &line);
             if (!thread->stop && alpha < value && value < beta)
                 thread->pv_line = line;
         };
@@ -443,11 +439,11 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             int value;
 
             if (depth == 1) {
-                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                value = threads[0].search(board, depth, alpha, beta, 0, false,
                                           threads[0].pv_line.length, &line);
             } else {
                 start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
-                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                value = threads[0].search(board, depth, alpha, beta, 0, false,
                                           threads[0].pv_line.length, &line);
                 end_helpers(threads, &helpers, num_threads);
             }
@@ -483,7 +479,8 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                                 std::copysign((mate_plies + 1) / 2, value));
                         value_str = "#" + std::to_string(mate_depth);
                     }
-                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, "
+                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = "
+                           "%8llu, "
                            "TT-hits "
                            "= %8llu, %.3fs, "
                            "PV = [%s]\n",
