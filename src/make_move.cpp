@@ -30,6 +30,10 @@ void make_move(Board *board, Move move) {
     board->hash ^= Zobrist::CARDS[board->side_card][2];
     std::swap(board->cards[board->turn][card_index], board->side_card);
 
+    // Keep hands in ascending order.
+    if (MoveBits::lower_swap(move))
+        std::swap(board->cards[board->turn][0], board->cards[board->turn][1]);
+
     // Swap the turn.
     board->turn = !board->turn;
     board->hash ^= Zobrist::TURN;
@@ -58,6 +62,10 @@ void undo_move(Board *board, Move move) {
     board->hash ^= Zobrist::PIECES[board->turn][piece_type][from];
     board->pieces[board->turn][piece_type] ^= xor_board;
     board->hash ^= Zobrist::PIECES[board->turn][piece_type][to];
+
+    // Keep hands in ascending order.
+    if (MoveBits::lower_swap(move))
+        std::swap(board->cards[board->turn][0], board->cards[board->turn][1]);
 
     // Swap the used-card and side-card.
     bool card_index = MoveBits::card_index(move);

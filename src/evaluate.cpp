@@ -3,7 +3,11 @@
 
 constexpr int MATERIAL = 100;
 
-int PARAMETERS[TOTAL_PARAMETERS];
+namespace Evaluation {
+    const int TOTAL_PARAMETERS =
+            (PIECE_TYPES_NUM * CARD_NUM * SQUARE_NUM * PLAYERS_NUM * 2);
+    int PARAMETERS[Evaluation::TOTAL_PARAMETERS];
+}  // namespace Evaluation
 
 void init_evaluation_parameters() {
     int parameters[] = {
@@ -221,7 +225,7 @@ void init_evaluation_parameters() {
             2,   1,   -5,  -3,  -4,  -1,  -1,   0,   3,   -3,  -15, 0,   2,   0,   0,
             63,  334, 0,   176, 0,   4,   -6,   -9,  0,   18,  -1,  1,   0,   0,   0,
             2,   0,   8,   -5,  -15};
-    std::copy(std::begin(parameters), std::end(parameters), PARAMETERS);
+    std::copy(std::begin(parameters), std::end(parameters), Evaluation::PARAMETERS);
 }
 
 int evaluate_white(Board *board, bool phase) {
@@ -244,7 +248,7 @@ int evaluate_white(Board *board, bool phase) {
                      board->turn) *
                             2 +
                     phase;
-            eval += PARAMETERS[index];
+            eval += Evaluation::PARAMETERS[index];
         }
 
         pieces ^= mask;
@@ -274,7 +278,7 @@ int evaluate_black(Board *board, bool phase) {
                          (1 - board->turn)) *
                                 2 +
                         phase;
-            eval += PARAMETERS[index];
+            eval += Evaluation::PARAMETERS[index];
         }
 
         pieces ^= mask;

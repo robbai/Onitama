@@ -4,6 +4,7 @@
 #include <cmath>
 #include <utility>
 #include <cstring>
+#include <cassert>
 #include <thread>
 #include <vector>
 #include <chrono>
@@ -25,6 +26,9 @@ uint64_t tb_hits = 0;
 uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
+
+
+enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
 
 std::string verify_pv(Board *board, Line *line, int depth) {
     int count = 0;
@@ -70,12 +74,13 @@ Board Thread::get_pv_leaf(Board board) {
 }
 
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-                   bool pv_node, bool following_pv, Line *curr_line) {
+                   bool following_pv, Line *curr_line) {
     if (stop)
         return 0;
 
     int alpha_original = alpha;
     bool root = !ply;
+    bool pv_node = beta - alpha != 1;
 
     // Terminal.
     if (board->game_over()) {
@@ -108,18 +113,20 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         }
     }
 
-    // Leaf.
-    if (depth == 0)
-        return q_search(board, alpha, beta, ply);
-    ++nodes;
-
     // Mate-distance pruning.
     if (!root) {
         alpha = std::max(alpha, MIN_EVAL + board->move_count);
         beta = std::min(beta, -MIN_EVAL - board->move_count - 1);
-        if (alpha >= beta)
+        if (alpha >= beta) {
+            ++nodes;
             return alpha;
+        }
     }
+
+    // Leaf.
+    if (depth == 0)
+        return q_search(board, alpha, beta, ply);
+    ++nodes;
 
     // Probe TT.
     TTEntry *entry = TTABLE.probe(board);
@@ -143,121 +150,138 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         }
     }
 
+    // Prepare branching.
     Line line;
-
-    Move *moves = move_lists[ply];
-    uint8_t size;
-    if (root) {
-        if (depth == 1) {
-            size = gen_moves(board, moves);
-            root_size = size;
-        } else {
-            size = root_size;
-        }
-    } else {
-        size = gen_moves(board, moves);
-    }
-
-    // Move ordering.
-    uint8_t bump = 0;
-    if (!root || !th) {
-        if (following_pv) {
-            // PV ordering.
-            following_pv = bump_move(moves, size, pv_line.moves[ply]);
-            if (following_pv)
-                ++bump;
-        }
-        if (hash_match) {
-            // TT ordering.
-            if (bump_move(moves, size, entry->move, bump))
-                ++bump;
-        }
-        if (root) {
-            for (uint8_t i = bump; i < size; ++i) {
-                // Winning-move ordering.
-                if (board->winning_move(moves[i]) &&
-                    bump_move(moves, size, moves[i], bump))
-                    ++bump;
-            }
-        }
-        for (uint8_t i = bump; i < size; ++i) {
-            // Capture ordering.
-            if (MoveBits::capture(moves[i]) && bump_move(moves, size, moves[i], bump))
-                ++bump;
-        }
-        sort_moves(board, moves, size, bump);  // Quiet ordering (history).
-    }
-
-    // Move loop.
     Move best_move;
     int best_value = MIN_EVAL;
-    for (uint8_t i = 0; i < size; ++i) {
-        const Move move = moves[i];
 
-        uint8_t reduction = (i < 5 || pv_node ? 0 : 1 + depth / 3);  // LMR.
-        if (reduction && reduction >= depth - 1) {
-            // History pruning.
-            if (!following_pv) {
-                uint8_t from = MoveBits::from(move);
-                uint8_t to = MoveBits::to(move);
-                bool piece_type = MoveBits::piece_type(move);
-                if (!history[board->turn][from][to][piece_type])
+    // Stage loop.
+    Move *moves = move_lists[ply];
+    int8_t move_num = -1;
+    bool searched_pv_move = false, searched_tt_move = false;
+    for (uint8_t stage = PV; stage < STAGE_NUM; ++stage) {
+        uint8_t size = 0;
+        switch (stage) {
+            case PV:
+                if (following_pv) {
+                    if (move_exists(board, pv_line.moves[ply])) {
+                        moves[0] = pv_line.moves[ply];
+                        size = 1;
+                        searched_pv_move = true;
+                    } else {
+                        following_pv = false;
+                    }
+                }
+                break;
+            case TT:
+                if (hash_match && entry->move != pv_line.moves[ply] &&
+                    move_exists(board, entry->move)) {
+                    moves[0] = entry->move;
+                    size = 1;
+                    searched_tt_move = true;
+                }
+                break;
+            default:
+                // Captures and quiets.
+                Bitboard targets = (board->pieces[!board->turn][STUDENT] |
+                                    board->pieces[!board->turn][MASTER]);
+                if (stage == QUIET)
+                    targets = ~targets;
+                size = gen_moves(board, moves, targets);
+
+                // Sort quiet moves.
+                if (stage == QUIET)
+                    sort_moves(board, moves, size);
+
+                break;
+        }
+
+        following_pv &= stage == PV;
+
+        // Move loop.
+        for (uint8_t move_index = 0; move_index < size; ++move_index) {
+            const Move move = moves[move_index];
+
+            // Filter out PV and TT moves.
+            if (stage >= CAPTURE) {
+                if (searched_pv_move && move == pv_line.moves[ply])
+                    continue;
+                if (searched_tt_move && move == entry->move)
                     continue;
             }
-        }
 
-        if (reduction > depth - 1)
-            reduction = depth - 1;
+            ++move_num;
 
-        make_move(board, move);
+            // Reductions.
+            int8_t reduction = 0;
+            if (stage == QUIET) {
+                if (depth > 2 && move_num) {
+                    // LMR.
+                    reduction = 1 + move_num / 4;
 
-        int value;
-        bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
-        if (!i) {
-            value = -search(board, depth - 1, -beta, -alpha, ply + 1, now_check_tb,
-                            pv_node, following_pv, &line);
-        } else {
-            value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                            now_check_tb, false, following_pv, &line);
-            if (value > alpha) {
-                if (reduction)
-                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                    now_check_tb, pv_node, following_pv, &line);
-                if (value > alpha)
-                    value = -search(board, depth - 1, -beta, -alpha, ply + 1,
-                                    now_check_tb, pv_node, following_pv, &line);
+                    if (!pv_node)
+                        reduction += 1;
+                }
             }
-        }
+            if (reduction > depth - 1)
+                reduction = depth - 1;
 
-        undo_move(board, move);
+            make_move(board, move);
 
-        if (stop)
-            return 0;
+            int value;
+            bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
+            if (!move_num) {
+                value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
+                                now_check_tb, following_pv, &line);
+            } else {
+                // Reductions and null window.
+                value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
+                                now_check_tb, following_pv, &line);
 
-        if (value > best_value) {
-            best_value = value;
-            best_move = move;
-            if (value > alpha) {
-                curr_line->moves[0] = move;
-                memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
-                curr_line->length = line.length + 1;
-
-                // Cut-off.
-                if (value >= beta) {
-                    // History heuristic.
-                    if (!MoveBits::capture(moves[i])) {
-                        uint8_t from = MoveBits::from(move);
-                        uint8_t to = MoveBits::to(move);
-                        bool piece_type = MoveBits::piece_type(move);
-                        history[board->turn][from][to][piece_type] += depth * depth;
-                    }
-
-                    break;
+                // Null window.
+                if (value > alpha && reduction > 0) {
+                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
+                                    now_check_tb, following_pv, &line);
                 }
 
-                alpha = value;
+                // Full search.
+                if (value > alpha) {
+                    value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
+                                    -beta, -alpha, ply + 1, now_check_tb, following_pv,
+                                    &line);
+                }
+            }
+
+            undo_move(board, move);
+
+            if (value > best_value) {
+                best_value = value;
+                best_move = move;
+                if (value > alpha) {
+                    curr_line->moves[0] = move;
+                    memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
+                    curr_line->length = line.length + 1;
+
+                    // Cut-off.
+                    if (value >= beta) {
+                        // History heuristic.
+                        if (!MoveBits::capture(move)) {
+                            uint8_t from = MoveBits::from(move);
+                            uint8_t to = MoveBits::to(move);
+                            bool piece_type = MoveBits::piece_type(move);
+                            history[board->turn][from][to][piece_type] += depth * depth;
+                        }
+
+                        break;
+                    }
+
+                    alpha = value;
+                }
             }
         }
+
+        if (best_value >= beta)
+            break;
     }
 
     if (stop)
@@ -341,9 +365,9 @@ void Thread::reset_history() {
                     history[i][j][k][l] = 0;
 }
 
-void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
-    for (uint8_t i = bump; i < size; ++i) {
-        Move move = moves[i];
+void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
+    for (uint8_t i = 0; i < size; ++i) {
+        const Move move = moves[i];
 
         // History heuristic.
         uint8_t from = MoveBits::from(move);
@@ -352,7 +376,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, uint8_t bump) {
         sort_values[i] = history[board->turn][from][to][piece_type];
     }
 
-    quicksort(moves, sort_values, bump, size);
+    quicksort(moves, sort_values, 0, size);
 }
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
@@ -369,7 +393,7 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
             Line line = {};
             Board thread_board = board->copy();
             int value = thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta,
-                                       0, false, true, thread->pv_line.length, &line);
+                                       0, false, thread->pv_line.length, &line);
             if (!thread->stop && alpha < value && value < beta)
                 thread->pv_line = line;
         };
@@ -412,11 +436,11 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             int value;
 
             if (depth == 1) {
-                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                value = threads[0].search(board, depth, alpha, beta, 0, false,
                                           threads[0].pv_line.length, &line);
             } else {
                 start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
-                value = threads[0].search(board, depth, alpha, beta, 0, false, true,
+                value = threads[0].search(board, depth, alpha, beta, 0, false,
                                           threads[0].pv_line.length, &line);
                 end_helpers(threads, &helpers, num_threads);
             }
@@ -452,7 +476,8 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                                 std::copysign((mate_plies + 1) / 2, value));
                         value_str = "#" + std::to_string(mate_depth);
                     }
-                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = %8llu, "
+                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = "
+                           "%8llu, "
                            "TT-hits "
                            "= %8llu, %.3fs, "
                            "PV = [%s]\n",

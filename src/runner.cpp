@@ -57,17 +57,19 @@ int use_runner() {
             Move move = start_search(&board, std::stof(search_time), false, 1);
             std::cout << "get " << move_string(&board, move) << std::endl;
         } else if (command == "give") {
-            string given_move;
-            stream >> given_move;
             Move moves[MAX_MOVES];
-            uint8_t size = gen_moves(&board, moves);
-            for (uint8_t i = 0; i < size; ++i) {
-                Move move = moves[i];
-                if (move_string(&board, move) == given_move) {
-                    make_move(&board, move);
-                    break;
-                } else if (i == size - 1) {
-                    std::cout << "Couldn't find given move: " << given_move << std::endl;
+            string given_move;
+            while (stream >> given_move) {
+                uint8_t size = gen_moves(&board, moves);
+                for (uint8_t i = 0; i < size; ++i) {
+                    Move move = moves[i];
+                    if (move_string(&board, move) == given_move) {
+                        make_move(&board, move);
+                        break;
+                    } else if (i == size - 1) {
+                        std::cout << "Couldn't find given move: " << given_move
+                                  << std::endl;
+                    }
                 }
             }
         } else if (command == "print") {

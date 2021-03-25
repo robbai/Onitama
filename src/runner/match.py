@@ -15,7 +15,7 @@ class Match:
             for path in engine_paths
         ]
         self.engine_names: List[str] = [
-            self.ask(i, "name") for i in range(len(engine_paths))
+            self.ask(i, "name").title() for i in range(len(engine_paths))
         ]
         self.score: List[int, int] = [0, 0]
 
@@ -52,10 +52,13 @@ class Match:
     def quit_engines(self):
         self.send("quit")
 
-    def run_match(self, search_time: float = 0.01, draw_plies: int = 96):
+    def run_match(self, search_time: float = 0.1, draw_plies: int = 96):
         game1: Game = Game()
         game2: Game = game1.copy()
-        print("Cards: " + ", ".join(CARD_NAMES[c] for c in game1.cards))
+        print(
+            "Cards: "
+            + ", ".join(CARD_NAMES[c] + " (" + str(c) + ")" for c in game1.cards)
+        )
 
         for i, game in enumerate((game1, game2,)):
             new_setup: str = "new " + " ".join(str(c) for c in game.cards)
@@ -64,13 +67,13 @@ class Match:
             for _ in range(draw_plies):
                 moving: bool = game.turn ^ i
                 move: str = self.ask(moving, "get " + str(search_time))
+                print(move, end=" ", flush=True)
                 game.move(move)
                 if game.game_over():
                     self.score[moving] += 1
                     print("1-0" if game.turn else "0-1")
                     break
                 self.send("give " + move)
-                print(move, end=" ", flush=True)
             else:
                 self.score[0] += 0.5
                 self.score[1] += 0.5

@@ -74,7 +74,8 @@ class Game:
             else self.pieces[2] == their_master
         ):
             return True
-        return their_master not in self.pieces
+        our_master: int = 6 - their_master
+        return our_master not in self.pieces
 
     def move(self, move: str):
         card: str = move[:-5]
