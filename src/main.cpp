@@ -7,14 +7,14 @@
 #include "search.h"
 #include "make_move.h"
 
-constexpr uint16_t MAX_GAME_LENGTH = 64, NUM_TESTS = 200, DELTA = 10;
+constexpr uint16_t MAX_GAME_LENGTH = 96, NUM_TESTS = 200, DELTA = 50;
 
-constexpr float APPLY_FACTOR = 2 / 10.0;
+constexpr float APPLY_FACTOR = 0.2;
 
 float run_match(Board board, int param1, int param2);
 float run_game(Board board, int param1, int param2);
 
-int main() {
+int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
@@ -27,7 +27,7 @@ int main() {
         cards[i] = (Card) i;
 
     // Run the tests.
-    PARAM = 42;
+    PARAM = 610;
     for (uint16_t i = 0; i < NUM_TESTS; ++i) {
         // Randomise the board's cards.
         std::shuffle(std::begin(cards), std::end(cards), rng);
@@ -62,7 +62,7 @@ float run_game(Board board, int param1, int param2) {
         }
 
         PARAM = (board.turn ? param2 : param1);
-        Move move = start_search(&board, true, 0.01);
+        Move move = start_search(&board, 0.01, true, 1);
         make_move(&board, move);
     }
 }

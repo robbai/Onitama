@@ -24,7 +24,7 @@ class Client {
     Board board;
     string match_id, token;
     Turn index;
-    bool end_loop = false, generated_tb = false;
+    bool end_loop = false;
     WebSocket *ws;
     void send(string message);
     void handle_json(string json);
