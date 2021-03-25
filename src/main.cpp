@@ -7,7 +7,7 @@
 #include "util.h"
 #include "tt/ttable.h"
 
-int main() {
+int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();

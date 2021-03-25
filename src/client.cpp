@@ -79,55 +79,56 @@ void Client::receive_state(rapidjson::Document &doc) {
         return;
     }
 
+    Board new_board = board.copy();
+
     // Parse turn.
-    board.turn = parse_colour(doc["currentTurn"].GetString());
+    new_board.turn = parse_colour(doc["currentTurn"].GetString());
 
     // Parse cards.
     for (int i = 0; i < PLAYERS_NUM; ++i) {
         const auto &card_array = doc["cards"][i ? "red" : "blue"].GetArray();
         for (int j = 0; j < CARDS_EACH_NUM; ++j)
-            board.cards[i][j] = parse_card(card_array[j].GetString());
+            new_board.cards[i][j] = parse_card(card_array[j].GetString());
     }
-    board.side_card = parse_card(doc["cards"]["side"].GetString());
+    new_board.side_card = parse_card(doc["cards"]["side"].GetString());
 
     // Parse squares.
     auto squares = doc["board"].GetString();
-    board.pieces[WHITE][STUDENT] = 0;
-    board.pieces[WHITE][MASTER] = 0;
-    board.pieces[BLACK][STUDENT] = 0;
-    board.pieces[BLACK][MASTER] = 0;
+    new_board.pieces[WHITE][STUDENT] = 0;
+    new_board.pieces[WHITE][MASTER] = 0;
+    new_board.pieces[BLACK][STUDENT] = 0;
+    new_board.pieces[BLACK][MASTER] = 0;
     for (int square = 0; square < SQUARE_NUM; ++square) {
         char character = squares[square];
         if (character == '0')
             continue;
         else if (character == '1')
-            board.pieces[WHITE][STUDENT] |= 1u << square;
+            new_board.pieces[WHITE][STUDENT] |= 1u << square;
         else if (character == '2')
-            board.pieces[WHITE][MASTER] |= 1u << square;
+            new_board.pieces[WHITE][MASTER] |= 1u << square;
         else if (character == '3')
-            board.pieces[BLACK][STUDENT] |= 1u << square;
+            new_board.pieces[BLACK][STUDENT] |= 1u << square;
         else if (character == '4')
-            board.pieces[BLACK][MASTER] |= 1u << square;
+            new_board.pieces[BLACK][MASTER] |= 1u << square;
     }
 
-    board.move_count = doc["moves"].GetArray().Size();
+    new_board.move_count = doc["moves"].GetArray().Size();
 
-    set_hash(&board);
+    set_hash(&new_board);
 
     // Setup and generate tablebase.
-    if (!generated_tb) {
-        generated_tb = true;
-        setup_and_generate_tb(&board);
-    }
+    if (!GENERATED_TB)
+        setup_and_generate_tb(&new_board);
 
-    std::cout << std::endl << pretty_board(&board) << std::endl;
+    std::cout << std::endl << pretty_board(&new_board) << std::endl;
 
     // Calculate and send a move back.
-    if (board.turn == (doc["indices"]["red"].GetInt() == index ? BLACK : WHITE)) {
-        Move move = start_search(&board);
+    if (new_board.turn == (doc["indices"]["red"].GetInt() == index ? BLACK : WHITE) &&
+        !(new_board == board)) {
+        Move move = start_search(&new_board);
 
         // Translate move and send.
-        string move_message = move_string(&board, move);
+        string move_message = move_string(&new_board, move);
         move_message = to_lower(move_message);
         for (int i = 0; i < move_message.length(); ++i) {
             if (move_message[i] == ':') {
@@ -137,6 +138,8 @@ void Client::receive_state(rapidjson::Document &doc) {
         }
         send("move " + match_id + " " + token + " " + move_message);
     }
+
+    board = new_board;
 
     std::cout << std::endl;
 }

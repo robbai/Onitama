@@ -29,8 +29,13 @@ namespace MoveBits {
         return move & 4096;
     }
 
-    constexpr Move half_create_move(uint8_t from, bool card_index, bool piece_type) {
-        return from | (card_index << 10) | (piece_type << 12);
+    constexpr bool lower_swap(Move move) {
+        return move & 8192;
+    }
+
+    constexpr Move half_create_move(uint8_t from, bool card_index, bool piece_type,
+                                    bool lower_swap) {
+        return from | (card_index << 10) | (piece_type << 12) | (lower_swap << 13);
     }
 
     constexpr Move finish_create_move(Move move, uint8_t to, bool capture) {

@@ -6,5 +6,6 @@
 
 uint8_t gen_moves(Board *board, Move *moves, Bitboard targets = FULL_BITBOARD);
 uint8_t count_moves(Board *board);
+bool move_exists(Board *board, Move move);
 
 #endif  // ONITAMA_MOVE_GEN_H
