@@ -217,14 +217,11 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (stage == QUIET) {
                 if (depth > 2 && move_num) {
                     // LMR.
-                    reduction = 1 + move_num / 6;
+                    reduction = 1 + move_num / 4;
 
                     if (!pv_node)
                         reduction += 1;
                 }
-
-                if (reduction < 0)
-                    reduction = 0;
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;
