@@ -55,7 +55,7 @@ TBEntry *generate_tb() {
 
     // Populate.
     const Index MAX_INDEX = get_max_index();
-    cout << "Array size: " << MAX_INDEX << endl;
+    //    cout << "Array size: " << MAX_INDEX << endl;
     TBEntry *entries = new TBEntry[MAX_INDEX];
     for (Index index = 0; index < MAX_INDEX; ++index) {
         TBEntry *entry = &entries[index];
@@ -75,7 +75,7 @@ TBEntry *generate_tb() {
     bool change_made = true;
     for (uint8_t iter = 0; change_made; ++iter) {
         change_made = false;
-        cout << "Iter: " << to_string(iter) << endl;
+        //        cout << "Iter: " << to_string(iter) << endl;
         for (Index index = 0; index < MAX_INDEX; ++index) {
             TBEntry *entry = &entries[index];
             if (entry->iter != iter)
@@ -159,13 +159,13 @@ TBEntry *generate_tb() {
             }
         }
         if (iter == 255) {
-            cout << "Had to exit early" << endl;
+            cout << "TB-gen had to exit early" << endl;
             break;
         }
     }
 
     double duration = (clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
-    printf("Took %.6s seconds\n", to_string(duration).c_str());
+    printf("TB-gen took %.6s seconds\n", to_string(duration).c_str());
 
     // Verify.
 #ifdef DEBUG

@@ -6,7 +6,7 @@
 #include "make_move.h"
 
 // Controls the effective maximum alpha.
-constexpr float LEARN_RATE = 1;
+constexpr float LEARN_RATE = 2;
 
 /*
  * Lambda controls how much the later score differences in a game influence the
@@ -15,7 +15,7 @@ constexpr float LEARN_RATE = 1;
 float LAMBDA = 1;
 
 // Alpha controls size of the parameter updates.
-float ALPHA[TOTAL_PARAMETERS];
+float ALPHA[Evaluation::TOTAL_PARAMETERS];
 
 constexpr float CENTISTUDENT_FACTOR = 0.0005;
 
@@ -25,7 +25,7 @@ float QUALITY_TOTAL[MAX_GAME_LENGTH];
 float QUALITY_FREQ[MAX_GAME_LENGTH];
 
 void init_td_learn() {
-    std::fill_n(ALPHA, TOTAL_PARAMETERS, 1);
+    std::fill_n(ALPHA, Evaluation::TOTAL_PARAMETERS, 1);
     std::fill_n(QUALITY_TOTAL, MAX_GAME_LENGTH, 0);
     std::fill_n(QUALITY_FREQ, MAX_GAME_LENGTH, 0);
 }
@@ -38,11 +38,11 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
     // Game result is -1, 0, or 1.
 
     // Store the current parameters and final updates.
-    int parameters[TOTAL_PARAMETERS];
+    int parameters[Evaluation::TOTAL_PARAMETERS];
     get_evaluation_parameters(parameters);
 
-    float net_change[TOTAL_PARAMETERS] = {};
-    float absolute_change[TOTAL_PARAMETERS] = {};
+    float net_change[Evaluation::TOTAL_PARAMETERS] = {};
+    float absolute_change[Evaluation::TOTAL_PARAMETERS] = {};
 
     // Loop to setup position scores and score differences.
     float s[game_length];  // Array of position scores.
@@ -58,7 +58,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
     }
 
     // Loop over eval parameters.
-    for (int p = 0; p < TOTAL_PARAMETERS; p++) {
+    for (int p = 0; p < Evaluation::TOTAL_PARAMETERS; p++) {
         float net = 0;
 
         // Loop over game positions.
@@ -93,7 +93,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
     }
 
     // Update the parameters and alpha.
-    for (int p = 0; p < TOTAL_PARAMETERS; p++) {
+    for (int p = 0; p < Evaluation::TOTAL_PARAMETERS; p++) {
         parameters[p] += LEARN_RATE * ALPHA[p] * net_change[p];
         if (absolute_change[p] != 0)
             ALPHA[p] = abs(net_change[p]) / absolute_change[p];
@@ -116,7 +116,7 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
 }
 
 void print_parameters(int *parameters) {
-    for (int p = 0; p < TOTAL_PARAMETERS; p++)
+    for (int p = 0; p < Evaluation::TOTAL_PARAMETERS; p++)
         std::cout << (p ? ", " : "{") << parameters[p];
     std::cout << "}" << std::endl << std::endl;
 }
@@ -134,15 +134,14 @@ void learn_game(Board *board, bool silent) {
         if (board->move_count == MAX_GAME_LENGTH)
             break;
 
-        Move move = start_search(board, true, 0.001);
+        Move move = start_search(board, 0.005, true, 1);
 
         // Print progression of game.
         if (!silent)
             std::cout << board->move_count << " ";
 
         // Store leaf and make move.
-        Board leaf = get_pv_leaf(*board);
-        leaves[board->move_count] = leaf;
+        leaves[board->move_count] = search_pv_leaf.copy();
         make_move(board, move);
     }
 

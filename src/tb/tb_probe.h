@@ -10,4 +10,7 @@ TBEntry probe_tb(Board *board);
 
 void setup_and_generate_tb(Board *board);
 
+void drop_tb();
+
+
 #endif  // ONITAMA_TB_PROBE_H

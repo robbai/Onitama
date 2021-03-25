@@ -27,6 +27,7 @@ uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
+Board search_pv_leaf;
 
 enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
 
@@ -497,6 +498,8 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
     threads[0].stop = true;
     if (search_thread.joinable())
         search_thread.join();
+
+    search_pv_leaf = threads[0].get_pv_leaf(*board);
 
     return threads[0].pv_line.moves[0];
 }

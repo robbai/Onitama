@@ -4,8 +4,6 @@
 constexpr int MATERIAL = 100;
 
 namespace Evaluation {
-    const int TOTAL_PARAMETERS =
-            (PIECE_TYPES_NUM * CARD_NUM * SQUARE_NUM * PLAYERS_NUM * 2);
     int PARAMETERS[Evaluation::TOTAL_PARAMETERS];
 }  // namespace Evaluation
 
@@ -306,7 +304,8 @@ void get_evaluation_parameters(int *parameters) {
 }
 
 void set_evaluation_parameters(int *parameters) {
-    std::copy(parameters, parameters + TOTAL_PARAMETERS, Evaluation::PARAMETERS);
+    std::copy(parameters, parameters + Evaluation::TOTAL_PARAMETERS,
+              Evaluation::PARAMETERS);
 }
 
 bool is_parameter_used(Board *board, int p) {

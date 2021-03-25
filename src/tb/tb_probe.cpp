@@ -28,7 +28,7 @@ Position to_position(Board *board) {
 }
 
 void setup_and_generate_tb(Board *board) {
-    Tablebase::STUDENT_MEN = 2;
+    Tablebase::STUDENT_MEN = 1;
     Tablebase::CARD_LIST[0] = board->cards[WHITE][0];
     Tablebase::CARD_LIST[1] = board->cards[WHITE][1];
     Tablebase::CARD_LIST[2] = board->cards[BLACK][0];
@@ -36,4 +36,8 @@ void setup_and_generate_tb(Board *board) {
     Tablebase::CARD_LIST[4] = board->side_card;
     entries = generate_tb();
     GENERATED_TB = true;
+}
+
+void drop_tb() {
+    delete entries;
 }
