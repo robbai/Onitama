@@ -3,11 +3,13 @@
 #include "tt/zobrist.h"
 #include "evaluate.h"
 #include "runner.h"
+#include "search.h"
 
 int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
+    init_search();
 
     if (argc == 2)
         return use_runner();

@@ -27,8 +27,16 @@ uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
-
 enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
+
+int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
+
+void init_search() {
+    for (int depth = 0; depth < MAX_DEPTH; depth++) {
+        for (int move_num = 0; move_num < MAX_MOVES; move_num++)
+            LMR_TABLE[depth][move_num] = (0.6 + log(depth) * log(move_num * 2.7) / 1.5);
+    }
+}
 
 std::string verify_pv(Board *board, Line *line, int depth) {
     int count = 0;
@@ -214,14 +222,21 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             // Reductions.
             int8_t reduction = 0;
-            if (stage == QUIET) {
-                if (depth > 2 && move_num) {
-                    // LMR.
-                    reduction = 1 + move_num / 4;
+            if (stage == QUIET && depth > 2 && move_num) {
+                // LMR.
+                reduction = LMR_TABLE[depth][move_num];
 
-                    if (!pv_node)
-                        reduction += 1;
-                }
+                uint8_t from = MoveBits::from(move);
+                uint8_t to = MoveBits::to(move);
+                bool piece_type = MoveBits::piece_type(move);
+                if (history[board->turn][from][to][piece_type] > 30)
+                    reduction -= 1;
+
+                if (!pv_node)
+                    reduction += 1;
+
+                if (reduction < 0)
+                    reduction = 0;
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;

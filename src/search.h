@@ -8,6 +8,8 @@ constexpr uint8_t MAX_DEPTH = 64;
 
 const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
+void init_search();
+
 Board get_pv_leaf(Board board);
 
 Move start_search(Board *board, float search_time = 1, bool silent = false,
