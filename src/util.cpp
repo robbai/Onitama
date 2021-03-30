@@ -81,29 +81,17 @@ bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to) {
     return false;
 }
 
-int partition(Move *moves, int *values, int p, int q) {
-    int x = values[p];
-    int i = p;
-    int j;
-
-    for (j = p + 1; j < q; j++) {
-        if (values[j] >= x) {
-            i = i + 1;
-            std::swap(values[i], values[j]);
-            std::swap(moves[i], moves[j]);
+void insertion_sort(Move *moves, int *values, int size) {
+    for (int i = 1; i < size; i++) {
+        Move move = moves[i];
+        int value = values[i];
+        int j = i - 1;
+        while (j >= 0 && values[j] < value) {
+            values[j + 1] = values[j];
+            moves[j + 1] = moves[j];
+            j = j - 1;
         }
-    }
-
-    std::swap(values[i], values[p]);
-    std::swap(moves[i], moves[p]);
-    return i;
-}
-
-void quicksort(Move *moves, int *values, int p, int q) {
-    int r;
-    if (p < q) {
-        r = partition(moves, values, p, q);
-        quicksort(moves, values, p, r);
-        quicksort(moves, values, r + 1, q);
+        values[j + 1] = value;
+        moves[j + 1] = move;
     }
 }

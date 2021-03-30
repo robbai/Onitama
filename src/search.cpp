@@ -366,6 +366,7 @@ void Thread::reset_history() {
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
+    // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
 
@@ -376,7 +377,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
         sort_values[i] = history[board->turn][from][to][piece_type];
     }
 
-    quicksort(moves, sort_values, 0, size);
+    // Sort.
+    insertion_sort(moves, sort_values, size);
 }
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
