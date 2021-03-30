@@ -19,7 +19,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 610;
+constexpr int MIN_EVAL = -100000, WINDOW = 1350;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
