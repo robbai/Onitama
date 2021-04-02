@@ -8,7 +8,7 @@ constexpr uint8_t MAX_DEPTH = 64;
 
 const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
-extern int PARAM;
+extern float PARAM;
 
 void init_search();
 
