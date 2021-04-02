@@ -1,7 +1,7 @@
 from random import sample
 from typing import Dict, List
 
-from cards import NUM_CARDS, CARD_INDEXES
+from cards import NUM_CARDS, CARD_MOVES, CARD_INDEXES
 
 SQUARES: Dict[str, int] = {
     "a1": 0,
@@ -77,15 +77,33 @@ class Game:
         our_master: int = 6 - their_master
         return our_master not in self.pieces
 
-    def move(self, move: str):
+    def move(self, move: str) -> bool:
         card: str = move[:-5]
-        from_sq: str = SQUARES[move[-4:-2]]
-        to_sq: str = SQUARES[move[-2:]]
+        if card not in CARD_INDEXES:
+            return False
+        card_index: int = CARD_INDEXES[card]
+
+        from_sq: int = SQUARES[move[-4:-2]]
+        if self.pieces[from_sq] not in (3 if self.turn else 1, 4 if self.turn else 2):
+            return False
+
+        to_sq: int = SQUARES[move[-2:]]
+        if self.pieces[to_sq] in (3 if self.turn else 1, 4 if self.turn else 2):
+            return False
+
+        dir: int = -1 if self.turn else 1
+        if (
+            (to_sq % 5 - from_sq % 5) * dir,
+            (to_sq // 5 - from_sq // 5) * dir,
+        ) not in CARD_MOVES[card_index]:
+            return False
+
         self.pieces[to_sq] = self.pieces[from_sq]
         self.pieces[from_sq] = 0
-        index: int = self.cards.index(CARD_INDEXES[card])
-        self.cards[index], self.cards[-1] = self.cards[-1], self.cards[index]
+        hand_index: int = self.cards.index(card_index)
+        self.cards[hand_index], self.cards[-1] = self.cards[-1], self.cards[hand_index]
         self.turn = not self.turn
+        return True
 
     def copy(self) -> "Game":
         copy: "Game" = Game()

@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
+    init_search();
 
     // Setup the board and card randomisation.
     Board board = {};
