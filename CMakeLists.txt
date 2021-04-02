@@ -54,6 +54,8 @@ add_executable(
         src/evaluate.h
         src/runner.cpp
         src/runner.h
+        src/tune.cpp
+        src/tune.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)

@@ -3,12 +3,14 @@
 
 #include <thread>
 #include "board.h"
+#include "tune.h"
 
 constexpr uint8_t MAX_DEPTH = 64;
 
 const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
-extern float PARAM;
+extern const int PARAM_NUM;
+extern Param PARAMS[];
 
 void init_search();
 

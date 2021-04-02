@@ -21,8 +21,6 @@
 
 constexpr int MIN_EVAL = -100000, WINDOW = 1350;
 
-float PARAM = 0;
-
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
 uint64_t tt_hits = 0;
@@ -33,10 +31,17 @@ enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
+const int PARAM_NUM = 4;
+Param PARAMS[] = {Param(0, 4, 0.6), Param(0.1, 3, 1), Param(1, 4, 2.7),
+                  Param(0.1, 3, 1 / 1.5)};
+
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
-            LMR_TABLE[depth][move_num] = (0.6 + log(depth) * log(move_num * 2.7) / 1.5);
+            LMR_TABLE[depth][move_num] =
+                    (PARAMS[0].value + log(depth * PARAMS[1].value) *
+                                               log(move_num * PARAMS[2].value) /
+                                               PARAMS[3].value);
     }
 }
 
