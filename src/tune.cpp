@@ -1,3 +1,4 @@
+#include <ctime>
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -31,6 +32,8 @@ int run_tune(const float magnitude, const float initial_delta, const float A,
     std::mt19937 mt(rng());
     std::uniform_real_distribution<double> dist(0, 1);
 
+    // Run loop.
+    clock_t start = clock();
     for (int k = 0; k < N; k++) {
         std::cout << (k + 1) << ": [";
 
@@ -66,7 +69,10 @@ int run_tune(const float magnitude, const float initial_delta, const float A,
                                        std::min(PARAMS[i].maximum, PARAMS[i].value));
             std::cout << PARAMS[i].value << (i == PARAM_NUM - 1 ? "]" : ", ");
         }
-        std::cout << std::endl;
+
+        double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
+        double fraction = static_cast<double>(k + 1) / N;
+        std::cout << " (" << int(elapsed / fraction - elapsed) << "s)" << std::endl;
     }
 
     return 0;
