@@ -31,17 +31,14 @@ enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
-const int PARAM_NUM = 4;
-Param PARAMS[] = {Param(0, 4, 0.6), Param(0.1, 3, 1), Param(1, 4, 2.7),
-                  Param(0.1, 3, 1 / 1.5)};
+const int PARAM_NUM = 0;
+Param PARAMS[] = {};
 
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
             LMR_TABLE[depth][move_num] =
-                    (PARAMS[0].value + log(depth * PARAMS[1].value) *
-                                               log(move_num * PARAMS[2].value) /
-                                               PARAMS[3].value);
+                    (0.295232 + log(depth * 2.19754) * log(move_num * 2.89954) / 2.20876);
     }
 }
 
