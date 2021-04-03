@@ -125,7 +125,7 @@ void Client::receive_state(rapidjson::Document &doc) {
     // Calculate and send a move back.
     if (new_board.turn == (doc["indices"]["red"].GetInt() == index ? BLACK : WHITE) &&
         !(new_board == board)) {
-        Move move = start_search(&new_board);
+        Move move = start_search(&new_board, 1, false, 1);
 
         // Translate move and send.
         string move_message = move_string(&new_board, move);
