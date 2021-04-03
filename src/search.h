@@ -10,6 +10,8 @@ const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
 extern Board search_pv_leaf;
 
+void init_search();
+
 Board get_pv_leaf(Board board);
 
 Move start_search(Board *board, float search_time = 1, bool silent = false,

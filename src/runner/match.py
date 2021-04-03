@@ -68,7 +68,10 @@ class Match:
                 moving: bool = game.turn ^ i
                 move: str = self.ask(moving, "get " + str(search_time))
                 print(move, end=" ", flush=True)
-                game.move(move)
+                if not move or not game.move(move):
+                    self.score[not moving] += 1
+                    print(("1-0" if game.turn else "0-1") + " (Illegal move)")
+                    break
                 if game.game_over():
                     self.score[moving] += 1
                     print("1-0" if game.turn else "0-1")

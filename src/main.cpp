@@ -1,18 +1,19 @@
 #include <ctime>
 #include <iostream>
 #include "move_tables.h"
-#include "client.h"
 #include "tt/zobrist.h"
 #include "td_learn.h"
 #include "evaluate.h"
 #include "util.h"
 #include "tt/ttable.h"
 #include "tb/tb_probe.h"
+#include "search.h"
 
 int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
+    init_search();
 
     init_td_learn();
 

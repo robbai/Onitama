@@ -5,8 +5,7 @@
 #include "board.h"
 
 namespace Evaluation {
-    constexpr int TOTAL_PARAMETERS =
-            (PIECE_TYPES_NUM * CARD_NUM * SQUARE_NUM * PLAYERS_NUM * 2);
+    constexpr int TOTAL_PARAMETERS = 1248;
     extern int PARAMETERS[];
 }  // namespace Evaluation
 

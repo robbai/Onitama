@@ -19,7 +19,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 610;
+constexpr int MIN_EVAL = -100000, WINDOW = 1350;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -30,6 +30,16 @@ uint8_t root_size = 0;
 Board search_pv_leaf;
 
 enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
+
+int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
+
+void init_search() {
+    for (int depth = 0; depth < MAX_DEPTH; depth++) {
+        for (int move_num = 0; move_num < MAX_MOVES; move_num++)
+            LMR_TABLE[depth][move_num] =
+                    (0.295232 + log(depth * 2.19754) * log(move_num * 2.89954) / 2.20876);
+    }
+}
 
 std::string verify_pv(Board *board, Line *line, int depth) {
     int count = 0;
@@ -215,14 +225,21 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             // Reductions.
             int8_t reduction = 0;
-            if (stage == QUIET) {
-                if (depth > 2 && move_num) {
-                    // LMR.
-                    reduction = 1 + move_num / 4;
+            if (stage == QUIET && depth > 2 && move_num) {
+                // LMR.
+                reduction = LMR_TABLE[depth][move_num];
 
-                    if (!pv_node)
-                        reduction += 1;
-                }
+                uint8_t from = MoveBits::from(move);
+                uint8_t to = MoveBits::to(move);
+                bool piece_type = MoveBits::piece_type(move);
+                if (history[board->turn][from][to][piece_type] > 30)
+                    reduction -= 1;
+
+                if (!pv_node)
+                    reduction += 1;
+
+                if (reduction < 0)
+                    reduction = 0;
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;
@@ -367,6 +384,7 @@ void Thread::reset_history() {
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
+    // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
 
@@ -377,7 +395,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
         sort_values[i] = history[board->turn][from][to][piece_type];
     }
 
-    quicksort(moves, sort_values, 0, size);
+    // Sort.
+    insertion_sort(moves, sort_values, size);
 }
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
