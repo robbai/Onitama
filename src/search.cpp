@@ -27,7 +27,7 @@ uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
-enum Stage : uint8_t { PV, TT, CAPTURE, QUIET, STAGE_NUM };
+enum Stage : uint8_t { PV, TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
@@ -190,6 +190,16 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     searched_tt_move = true;
                 }
                 break;
+            case KILLER:
+                for (uint8_t k = 0; k < KILLER_NUM; ++k) {
+                    Move killer_move = killers[ply][k];
+                    if (move_exists(board, killer_move) &&
+                        !is_killer(ply, killer_move, k)) {
+                        moves[size] = killer_move;
+                        ++size;
+                    }
+                }
+                break;
             default:
                 // Captures and quiets.
                 Bitboard targets = (board->pieces[!board->turn][STUDENT] |
@@ -216,6 +226,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 if (searched_pv_move && move == pv_line.moves[ply])
                     continue;
                 if (searched_tt_move && move == entry->move)
+                    continue;
+                if (stage > KILLER && is_killer(ply, move))
                     continue;
             }
 
@@ -280,12 +292,17 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
                     // Cut-off.
                     if (value >= beta) {
-                        // History heuristic.
                         if (!MoveBits::capture(move)) {
+                            // History heuristic.
                             uint8_t from = MoveBits::from(move);
                             uint8_t to = MoveBits::to(move);
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
+
+                            // Killer move.
+                            for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
+                                killers[ply][k] = killers[ply][k - 1];
+                            killers[ply][0] = move;
                         }
 
                         break;
@@ -332,6 +349,10 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
     if (board->game_over())
         return MIN_EVAL + board->move_count;
 
+    // Win in one.
+    if (board->has_winning_move())
+        return -(MIN_EVAL + board->move_count + 1);
+
     // Evaluate.
     int value = evaluate(board) * (board->turn ? -1 : 1);
     if (value >= beta)
@@ -343,17 +364,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return alpha;
 
     Move *moves = move_lists[ply];
-    uint8_t size = gen_moves(
-            board, moves,
-            (board->pieces[!board->turn][STUDENT] | board->pieces[!board->turn][MASTER]));
-
-    // Winning-move ordering.
-    int bump = 0;
-    for (uint8_t i = bump; i < size; ++i) {
-        // Winning-move ordering.
-        if (board->winning_move(moves[i]) && bump_move(moves, size, moves[i], bump))
-            ++bump;
-    }
+    uint8_t size = gen_moves(board, moves, board->pieces[!board->turn][STUDENT]);
 
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
@@ -373,12 +384,21 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
     return alpha;
 }
 
-void Thread::reset_history() {
+void Thread::reset() {
+    pv_line = {};
+
+    // History.
     for (uint8_t i = 0; i < PLAYERS_NUM; ++i)
         for (uint8_t j = 0; j < SQUARE_NUM; ++j)
             for (uint8_t k = 0; k < SQUARE_NUM; ++k)
                 for (uint8_t l = 0; l < PIECE_TYPES_NUM; ++l)
                     history[i][j][k][l] = 0;
+
+    // Killers.
+    for (uint8_t d = 0; d < MAX_DEPTH; ++d) {
+        for (uint8_t k = 0; k < Thread::KILLER_NUM; ++k)
+            killers[d][k] = 0;
+    }
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
@@ -395,6 +415,14 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
 
     // Sort.
     insertion_sort(moves, sort_values, size);
+}
+
+bool Thread::is_killer(uint8_t ply, Move move, uint8_t killer_num) {
+    for (uint8_t k = 0; k < killer_num; ++k) {
+        if (killers[ply][k] == move)
+            return true;
+    }
+    return false;
 }
 
 void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
@@ -437,8 +465,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             Thread *thread = &threads[th];
             thread->th = th;
             thread->stop = false;
-            thread->pv_line = {};
-            thread->reset_history();
+            thread->reset();
         }
 
         // Setup main search.

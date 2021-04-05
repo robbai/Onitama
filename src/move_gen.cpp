@@ -87,12 +87,19 @@ bool move_exists(Board *board, Move move) {
         return false;
 
     // Must be a capture.
-    if (MoveBits::capture(move) && !((1u << to) & (board->pieces[!board->turn][STUDENT] |
-                                                   board->pieces[!board->turn][MASTER])))
+    if (MoveBits::capture(move) ==
+        (((1u << to) & board->pieces[!board->turn][STUDENT]) == 0))
+        return false;
+
+    // Must be swapping indexes.
+    bool card_index = MoveBits::card_index(move);
+    bool lower_swap = (card_index ==
+                       (board->side_card < board->cards[board->turn][1 - card_index]));
+    if (lower_swap != MoveBits::lower_swap(move))
         return false;
 
     // Card cannot move to this destination.
-    Card card = board->cards[board->turn][MoveBits::card_index(move)];
+    Card card = board->cards[board->turn][card_index];
     Bitboard squares =
             MOVE_TABLES[(card * SQUARE_NUM + from) * PLAYERS_NUM + board->turn];
     return squares & (1u << to);
