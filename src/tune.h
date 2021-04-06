@@ -13,8 +13,8 @@ class Param {
 };
 
 
-int run_tune(const float magnitude, const float initial_delta, const float A = 100,
-             const float c = 1);
+int run_tune(const float magnitude, const float initial_delta, const bool reinit_search,
+             const float A = 100, const float c = 1);
 
 
 #endif  // ONITAMA_TUNE_H

@@ -148,8 +148,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     // Probe TT.
     TTEntry *entry = TTABLE.probe(board);
     uint32_t remaining_hash = (board->hash >> 32);
-    // bool hash_match = (entry->remaining_hash == remaining_hash);
-    bool hash_match = false;
+    bool hash_match = (entry->remaining_hash == remaining_hash);
     if (hash_match && !root) {
         ++tt_hits;
         if (!pv_node && entry->depth >= depth) {

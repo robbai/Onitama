@@ -6,16 +6,20 @@
 #include "tune.h"
 #include "search.h"
 #include "make_move.h"
+#include "tt/ttable.h"
 
 constexpr uint16_t MAX_GAME_LENGTH = 96;
 
 constexpr float SEARCH_TIME = 0.05;
 
-float run_match(Board board, float params1[], float params2[]);
+float run_match(Board board, float params1[], float params2[], const bool reinit_search);
 
 // https://www.jhuapl.edu/spsa/PDF-SPSA/Spall_Implementation_of_the_Simultaneous.pdf
-int run_tune(const float magnitude, const float initial_delta, const float A,
-             const float c) {
+int run_tune(const float magnitude, const float initial_delta, const bool reinit_search,
+             const float A, const float c) {
+    if (!reinit_search)
+        init_search();
+
     const int N = A * 10;
     const float alpha = 0.602, gamma = 0.101;
     const float a = (initial_delta * pow(A + 1, alpha)) / magnitude;
@@ -60,7 +64,7 @@ int run_tune(const float magnitude, const float initial_delta, const float A,
         board.cards[BLACK][1] = cards[3];
         board.side_card = cards[4];
         board.turn = cards[5] % 2;
-        float match = run_match(board, params1, params2);
+        float match = run_match(board, params1, params2, reinit_search);
 
         // Apply change.
         for (int i = 0; i < PARAM_NUM; ++i) {
@@ -78,7 +82,7 @@ int run_tune(const float magnitude, const float initial_delta, const float A,
     return 0;
 }
 
-float run_game(Board board, float params1[], float params2[]) {
+float run_game(Board board, float params1[], float params2[], const bool reinit_search) {
     float params_prev[PARAM_NUM];
     for (int i = 0; i < PARAM_NUM; ++i)
         params_prev[i] = PARAMS[i].value;
@@ -99,12 +103,16 @@ float run_game(Board board, float params1[], float params2[]) {
         float *params = board.turn ? params2 : params1;
         for (int i = 0; i < PARAM_NUM; ++i)
             PARAMS[i].value = params[i];
-        init_search();
+        if (reinit_search)
+            init_search();
         Move move = start_search(&board, SEARCH_TIME, true, 1);
         make_move(&board, move);
+        TTABLE.clear();
     }
 }
 
-float run_match(Board board, float params1[], float params2[]) {
-    return (run_game(board, params1, params2) - run_game(board, params2, params1)) / 2;
+float run_match(Board board, float params1[], float params2[], const bool reinit_search) {
+    return (run_game(board, params1, params2, reinit_search) -
+            run_game(board, params2, params1, reinit_search)) /
+           2;
 }

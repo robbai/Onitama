@@ -8,5 +8,5 @@ int main() {
     init_move_tables();
     init_evaluation_parameters();
 
-    return run_tune(4, 0.2);
+    return run_tune(2, 0.1, false);
 }
