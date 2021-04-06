@@ -70,6 +70,11 @@ std::string verify_pv(Board *board, Line *line, int depth) {
     return pv.substr(0, pv.length() - 2);
 }
 
+bool is_mate_value(int value) {
+    value = -abs(value);
+    return MIN_EVAL != value && value < MIN_EVAL + MAX_DEPTH + 255;
+}
+
 Board Thread::get_pv_leaf(Board board) {
     Move moves[MAX_MOVES];
     for (int i = 0; i < pv_line.length; ++i) {
@@ -244,10 +249,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             int8_t reduction = 0;
             if (stage == QUIET && move_num) {
                 // Futility prune.
-                if ((!move_index || move_num == 1) && static_value != MIN_EVAL) {
-                    if (static_value < alpha - 517 * (depth + 1))
-                        break;
-                }
+                if (!root && !is_mate_value(alpha) && !is_mate_value(beta) &&
+                    MIN_EVAL != static_value && static_value < alpha - 484 * (depth + 1))
+                    break;
 
                 // Late-move reduction.
                 if (depth > 2) {
@@ -529,17 +533,17 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                 // Replace PV.
                 threads[0].pv_line = line;
 
-                int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
-
                 // Output.
                 if (!silent) {
                     std::string value_str;
-                    if (mate_plies > MAX_DEPTH + 255) {
-                        value_str = std::to_string(to_centi(value));
-                    } else {
+                    if (is_mate_value(value)) {
+                        int mate_plies =
+                                std::abs(MIN_EVAL + board->move_count + std::abs(value));
                         int mate_depth = static_cast<int>(
                                 std::copysign((mate_plies + 1) / 2, value));
                         value_str = "#" + std::to_string(mate_depth);
+                    } else {
+                        value_str = std::to_string(to_centi(value));
                     }
                     printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = "
                            "%8llu, "
