@@ -166,7 +166,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     // Prepare branching.
     Line line;
     Move best_move;
-    int best_value = MIN_EVAL;
+    int best_value = MIN_EVAL, static_value = MIN_EVAL;
 
     // Stage loop.
     Move *moves = move_lists[ply];
@@ -213,8 +213,11 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 size = gen_moves(board, moves, targets);
 
                 // Sort quiet moves.
-                if (stage == QUIET)
+                if (stage == QUIET) {
                     sort_moves(board, moves, size);
+                    if (depth < 7)
+                        static_value = evaluate(board) * (board->turn ? -1 : 1);
+                }
 
                 break;
         }
@@ -237,23 +240,31 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             ++move_num;
 
-            // Reductions.
+            // Reductions and pruning.
             int8_t reduction = 0;
-            if (stage == QUIET && depth > 2 && move_num) {
-                // LMR.
-                reduction = LMR_TABLE[depth][move_num];
+            if (stage == QUIET && move_num) {
+                // Futility prune.
+                if ((!move_index || move_num == 1) && static_value != MIN_EVAL) {
+                    if (static_value < alpha - 517 * (depth + 1))
+                        break;
+                }
 
-                uint8_t from = MoveBits::from(move);
-                uint8_t to = MoveBits::to(move);
-                bool piece_type = MoveBits::piece_type(move);
-                if (history[board->turn][from][to][piece_type] > 30)
-                    reduction -= 1;
+                // Late-move reduction.
+                if (depth > 2) {
+                    reduction = LMR_TABLE[depth][move_num];
 
-                if (!pv_node)
-                    reduction += 1;
+                    uint8_t from = MoveBits::from(move);
+                    uint8_t to = MoveBits::to(move);
+                    bool piece_type = MoveBits::piece_type(move);
+                    if (history[board->turn][from][to][piece_type] > 30)
+                        reduction -= 1;
 
-                if (reduction < 0)
-                    reduction = 0;
+                    if (!pv_node)
+                        reduction += 1;
+
+                    if (reduction < 0)
+                        reduction = 0;
+                }
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;
@@ -361,6 +372,11 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
     int value = evaluate(board) * (board->turn ? -1 : 1);
     if (value >= beta)
         return beta;
+
+    // Delta prune (futility).
+    if (value < alpha - 2887)
+        return alpha;
+
     if (value > alpha)
         alpha = value;
 
