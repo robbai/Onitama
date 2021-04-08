@@ -27,7 +27,7 @@ uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
-enum Stage : uint8_t { PV, TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
+enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
@@ -39,32 +39,35 @@ void init_search() {
     }
 }
 
-std::string verify_pv(Board *board, Line *line, int depth) {
-    int count = 0;
-    std::string pv = "";
+Move get_tt_move(Board *board) {
+    TTEntry *entry = TTABLE.probe(board);
+    uint32_t remaining_hash = (board->hash >> 32);
+    bool hash_match = (entry->remaining_hash == remaining_hash);
+    return hash_match && move_exists(board, entry->move) ? entry->move : 0;
+}
 
-    Move moves[MAX_MOVES];
-    depth = std::min(depth, line->length);
-    for (int i = 0; i < depth; ++i) {
-        Move move = line->moves[i];
-        uint8_t size = gen_moves(board, moves);
-        for (int j = 0; j < size; j++) {
-            if (moves[j] == move) {
-                pv += move_string(board, move) + ", ";
-                make_move(board, move);
-                ++count;
-                break;
-            }
-        }
-        if (count == i)
+std::string verify_pv(Board *board, uint8_t depth) {
+    // Find PV.
+    Move moves[depth];
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < depth; ++i) {
+        Move move = get_tt_move(board);
+        if (!move)
             break;
+        moves[i] = move;
+        make_move(board, move);
+        ++count;
     }
-    for (int i = (count - 1); i >= 0; --i)
-        undo_move(board, line->moves[i]);
 
-    line->length = count;
+    // Build string.
+    std::string pv;
+    for (uint8_t i = count; i > 0; --i) {
+        const Move move = moves[i - 1];
+        pv = (i == 1 ? "" : ", ") + move_string(board, move) + pv;
+        undo_move(board, move);
+    }
 
-    return pv.substr(0, pv.length() - 2);
+    return pv;
 }
 
 bool is_mate_value(int value) {
@@ -72,23 +75,7 @@ bool is_mate_value(int value) {
     return MIN_EVAL != value && value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
-Board Thread::get_pv_leaf(Board board) {
-    Move moves[MAX_MOVES];
-    for (int i = 0; i < pv_line.length; ++i) {
-        Move move = pv_line.moves[i];
-        uint8_t size = gen_moves(&board, moves);
-        for (int j = 0; j < size; j++) {
-            if (moves[j] == move) {
-                make_move(&board, move);
-                break;
-            }
-        }
-    }
-    return board;
-}
-
-int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-                   bool following_pv, Line *curr_line) {
+int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb) {
     if (stop)
         return 0;
 
@@ -165,31 +152,18 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     }
 
     // Prepare branching.
-    Line line;
     Move best_move;
     int best_value = MIN_EVAL, static_value = MIN_EVAL;
 
     // Stage loop.
     Move *moves = move_lists[ply];
     int8_t move_num = -1;
-    bool searched_pv_move = false, searched_tt_move = false;
-    for (uint8_t stage = PV; stage < STAGE_NUM; ++stage) {
+    bool searched_tt_move = false;
+    for (uint8_t stage = TT; stage < STAGE_NUM; ++stage) {
         uint8_t size = 0;
         switch (stage) {
-            case PV:
-                if (following_pv) {
-                    if (move_exists(board, pv_line.moves[ply])) {
-                        moves[0] = pv_line.moves[ply];
-                        size = 1;
-                        searched_pv_move = true;
-                    } else {
-                        following_pv = false;
-                    }
-                }
-                break;
             case TT:
-                if (hash_match && entry->move != pv_line.moves[ply] &&
-                    move_exists(board, entry->move)) {
+                if (hash_match && move_exists(board, entry->move)) {
                     moves[0] = entry->move;
                     size = 1;
                     searched_tt_move = true;
@@ -223,16 +197,12 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 break;
         }
 
-        following_pv &= stage == PV;
-
         // Move loop.
         for (uint8_t move_index = 0; move_index < size; ++move_index) {
             const Move move = moves[move_index];
 
             // Filter out PV and TT moves.
             if (stage >= CAPTURE) {
-                if (searched_pv_move && move == pv_line.moves[ply])
-                    continue;
                 if (searched_tt_move && move == entry->move)
                     continue;
                 if (stage > KILLER && is_killer(ply, move))
@@ -275,23 +245,22 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                                now_check_tb, following_pv, &line);
+                                now_check_tb);
             } else {
                 // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                now_check_tb, following_pv, &line);
+                                now_check_tb);
 
                 // Null window.
                 if (value > alpha && reduction > 0) {
                     value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                    now_check_tb, following_pv, &line);
+                                    now_check_tb);
                 }
 
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, now_check_tb, following_pv,
-                                    &line);
+                                    -beta, -alpha, ply + 1, now_check_tb);
                 }
             }
 
@@ -301,10 +270,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 best_value = value;
                 best_move = move;
                 if (value > alpha) {
-                    curr_line->moves[0] = move;
-                    memcpy(curr_line->moves + 1, line.moves, line.length * sizeof(Move));
-                    curr_line->length = line.length + 1;
-
                     // Cut-off.
                     if (value >= beta) {
                         if (!MoveBits::capture(move)) {
@@ -405,8 +370,6 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
 }
 
 void Thread::reset() {
-    pv_line = {};
-
     // History.
     for (uint8_t i = 0; i < PLAYERS_NUM; ++i)
         for (uint8_t j = 0; j < SQUARE_NUM; ++j)
@@ -456,12 +419,8 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
             thread->move_lists[0][m] = threads[0].move_lists[0][m];
 
         auto search = [th, board, depth, alpha, beta](Thread *thread) {
-            Line line = {};
             Board thread_board = board->copy();
-            int value = thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta,
-                                       0, false, thread->pv_line.length, &line);
-            if (!thread->stop && alpha < value && value < beta)
-                thread->pv_line = line;
+            thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta, 0, false);
         };
         std::thread helper = std::thread(search, thread);
         helpers->push_back(std::move(helper));
@@ -478,7 +437,9 @@ void end_helpers(Thread *threads, std::vector<std::thread> *helpers,
 }
 
 Move start_search(Board *board, float search_time, bool silent, uint8_t num_threads) {
-    auto search = [&board, silent, num_threads](Thread *threads) {
+    Move best_move;
+
+    auto search = [&board, silent, num_threads, &best_move](Thread *threads) {
         // Setup threads.
         std::vector<std::thread> helpers;
         for (uint8_t th = 0; th < num_threads; ++th) {
@@ -497,23 +458,20 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
 
         // Iterative deepening.
         while (depth <= MAX_DEPTH) {
-            Line line;
             int value;
 
             if (depth == 1) {
-                value = threads[0].search(board, depth, alpha, beta, 0, false,
-                                          threads[0].pv_line.length, &line);
+                value = threads[0].search(board, depth, alpha, beta, 0, false);
             } else {
                 start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
-                value = threads[0].search(board, depth, alpha, beta, 0, false,
-                                          threads[0].pv_line.length, &line);
+                value = threads[0].search(board, depth, alpha, beta, 0, false);
                 end_helpers(threads, &helpers, num_threads);
             }
 
             // End search by timeout.
             if (threads[0].stop) {
                 if (depth == 1)
-                    threads[0].pv_line = line;
+                    best_move = get_tt_move(board);
                 break;
             }
 
@@ -526,8 +484,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                 alpha = value - WINDOW;
                 beta = value + WINDOW;
 
-                // Replace PV.
-                threads[0].pv_line = line;
+                best_move = get_tt_move(board);
 
                 // Output.
                 if (!silent) {
@@ -547,7 +504,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                            "= %8llu, %.3fs, "
                            "PV = [%s]\n",
                            depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
-                           verify_pv(board, &threads[0].pv_line, depth).c_str());
+                           verify_pv(board, depth).c_str());
                 }
 
                 ++depth;
@@ -563,5 +520,5 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
     if (search_thread.joinable())
         search_thread.join();
 
-    return threads[0].pv_line.moves[0];
+    return best_move;
 }
