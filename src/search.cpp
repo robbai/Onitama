@@ -19,7 +19,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 1350;
+constexpr int MIN_EVAL = -100000, WINDOW = 235;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -481,8 +481,10 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             if (value <= alpha || value >= beta) {
                 alpha = MIN_EVAL, beta = -MIN_EVAL;
             } else {
-                alpha = value - WINDOW;
-                beta = value + WINDOW;
+                if (depth >= 5) {
+                    alpha = value - WINDOW;
+                    beta = value + WINDOW;
+                }
 
                 best_move = get_tt_move(board);
 
