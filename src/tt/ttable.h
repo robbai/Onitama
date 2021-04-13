@@ -11,8 +11,8 @@ enum NodeType : uint8_t { EXACT, UPPER, LOWER };
 
 struct TTEntry {
     uint32_t remaining_hash;
-    Move move;
-    uint8_t depth;
+    Move move = 0;
+    uint8_t depth = 0;
     int value;
     NodeType type;
 };

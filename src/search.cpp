@@ -47,23 +47,23 @@ Move get_tt_move(Board *board) {
 }
 
 std::string verify_pv(Board *board, uint8_t depth) {
-    // Find PV.
+    // Make moves.
+    std::string pv;
     Move moves[depth];
     uint8_t count = 0;
     for (uint8_t i = 0; i < depth; ++i) {
-        Move move = get_tt_move(board);
-        if (!move)
+        const Move move = get_tt_move(board);
+        if (!move_exists(board, move))
             break;
         moves[i] = move;
+        pv += (i ? ", " : "") + move_string(board, move);
         make_move(board, move);
         ++count;
     }
 
-    // Build string.
-    std::string pv;
+    // Undo moves.
     for (uint8_t i = count; i > 0; --i) {
         const Move move = moves[i - 1];
-        pv = (i == 1 ? "" : ", ") + move_string(board, move) + pv;
         undo_move(board, move);
     }
 
@@ -301,7 +301,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         return 0;
 
     // Store in TT.
-    if (entry->depth <= depth) {
+    if (entry->depth <= depth || (root && !move_exists(board, entry->move))) {
         entry->value = best_value;
         if (best_value <= alpha_original) {
             entry->type = UPPER;
