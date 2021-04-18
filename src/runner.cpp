@@ -9,6 +9,7 @@
 #include "make_move.h"
 #include "version.h"
 #include "tt/ttable.h"
+#include "tt/zobrist.h"
 
 using std::string;
 
@@ -44,13 +45,17 @@ int use_runner() {
                     case 0:
                     case 1:
                         board.cards[WHITE][i] = card;
+                        break;
                     case 2:
                     case 3:
                         board.cards[BLACK][i - 2] = card;
+                        break;
                     case 4:
                         board.side_card = card;
+                        break;
                 }
             }
+            set_hash(&board);
         } else if (command == "get") {
             string search_time;
             stream >> search_time;
@@ -62,7 +67,7 @@ int use_runner() {
             while (stream >> given_move) {
                 uint8_t size = gen_moves(&board, moves);
                 for (uint8_t i = 0; i < size; ++i) {
-                    Move move = moves[i];
+                    const Move move = moves[i];
                     if (move_string(&board, move) == given_move) {
                         make_move(&board, move);
                         break;
@@ -71,6 +76,13 @@ int use_runner() {
                                   << std::endl;
                     }
                 }
+            }
+        } else if (command == "moves") {
+            Move moves[MAX_MOVES];
+            uint8_t size = gen_moves(&board, moves);
+            for (uint8_t i = 0; i < size; ++i) {
+                const Move move = moves[i];
+                std::cout << int(i + 1) << ": " << move_string(&board, move) << std::endl;
             }
         } else if (command == "print") {
             std::cout << pretty_board(&board) << std::endl;
