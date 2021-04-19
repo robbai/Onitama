@@ -34,6 +34,7 @@ class Thread {
 
     void reset();
     int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb);
+    Board get_pv_leaf(Board board);
 };
 
 #endif  // ONITAMA_SEARCH_H

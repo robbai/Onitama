@@ -6,7 +6,7 @@
 #include "make_move.h"
 
 // Controls the effective maximum alpha.
-constexpr float LEARN_RATE = 2;
+constexpr float LEARN_RATE = 1;
 
 /*
  * Lambda controls how much the later score differences in a game influence the
@@ -73,8 +73,6 @@ void learn_parameters(float game_result, Board *leaves, uint8_t game_length,
             set_evaluation_parameters(parameters);
             if (ds == 0)
                 continue;
-            //            std::cout << CARD_NAMES[(p / (PLAYERS_NUM * PIECE_TYPES_NUM)) % CARD_NUM]
-            //                      << ": " << ds << std::endl;
 
             // Now sum over all score differences to end of game,
             // weighting down the later positions by lambda^(m-i).
@@ -134,7 +132,7 @@ void learn_game(Board *board, bool silent) {
         if (board->move_count == MAX_GAME_LENGTH)
             break;
 
-        Move move = start_search(board, 0.005, true, 1);
+        Move move = start_search(board, 0.01, true, 1);
 
         // Print progression of game.
         if (!silent)

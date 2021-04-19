@@ -72,6 +72,16 @@ std::string verify_pv(Board *board, uint8_t depth) {
     return pv;
 }
 
+Board Thread::get_pv_leaf(Board board) {
+    for (uint8_t i = 0; i < MAX_DEPTH; ++i) {
+        const Move move = get_tt_move(&board);
+        if (!move_exists(&board, move))
+            break;
+        make_move(&board, move);
+    }
+    return board;
+}
+
 bool is_mate_value(int value) {
     value = -abs(value);
     return MIN_EVAL != value && value < MIN_EVAL + MAX_DEPTH + 255;

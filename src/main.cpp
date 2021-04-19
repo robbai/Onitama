@@ -9,12 +9,17 @@
 #include "tb/tb_probe.h"
 #include "search.h"
 
-int main(int argc, char *argv[]) {
+constexpr bool USE_TB = true;
+
+constexpr uint32_t REPETITIONS = 4;
+
+uint8_t setup_index = 11;
+
+int main() {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
     init_search();
-
     init_td_learn();
 
     // Array of ways to order cards.
@@ -28,18 +33,18 @@ int main(int argc, char *argv[]) {
             {2, 4, 0, 1, 3}, {2, 4, 0, 3, 1}, {2, 4, 1, 3, 0}, {3, 4, 0, 1, 2},
             {3, 4, 0, 2, 1}, {3, 4, 1, 2, 0}};
 
-    // Go through every card combination.
     clock_t start = clock();
-    uint8_t setup_index = 11;
-    const uint32_t REPETITIONS = 4;
-    const uint32_t TOTAL_ITER = 4368;
+
+    // Go through every card combination.
     uint32_t iter = 0;
+    const uint32_t TOTAL_ITER = 4368;
     for (uint8_t j = 0; j < REPETITIONS; ++j) {
         for (uint8_t card_1 = 0; card_1 < CARD_NUM - 4; ++card_1) {
             for (uint8_t card_2 = (card_1 + 1); card_2 < CARD_NUM - 3; ++card_2) {
                 for (uint8_t card_3 = (card_2 + 1); card_3 < CARD_NUM - 2; ++card_3) {
                     for (uint8_t card_4 = (card_3 + 1); card_4 < CARD_NUM - 1; ++card_4) {
                         for (uint8_t card_5 = (card_4 + 1); card_5 < CARD_NUM; ++card_5) {
+                            // Setup board.
                             setup_index = (setup_index + 1) % 30;
                             int *setup = setups[setup_index];
                             Card cards[5] = {(Card) card_1, (Card) card_2, (Card) card_3,
@@ -50,7 +55,10 @@ int main(int argc, char *argv[]) {
                             board.cards[BLACK][0] = cards[setup[2]];
                             board.cards[BLACK][1] = cards[setup[3]];
                             board.side_card = cards[setup[4]];
-                            //                            setup_and_generate_tb(&board);
+
+                            // Learn.
+                            if (USE_TB)
+                                setup_and_generate_tb(&board);
                             ++iter;
                             learn_game(&board, iter % TOTAL_ITER);
                             double elapsed = (std::clock() - start) /
@@ -61,7 +69,8 @@ int main(int argc, char *argv[]) {
                                       << int(elapsed / fraction - elapsed) << "s)"
                                       << std::endl;
                             TTABLE.clear();
-                            //                            drop_tb();
+                            if (USE_TB)
+                                drop_tb();
                         }
                     }
                 }
