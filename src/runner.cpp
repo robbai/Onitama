@@ -9,6 +9,7 @@
 #include "make_move.h"
 #include "version.h"
 #include "tt/ttable.h"
+#include "tt/zobrist.h"
 
 using std::string;
 
@@ -44,13 +45,17 @@ int use_runner() {
                     case 0:
                     case 1:
                         board.cards[WHITE][i] = card;
+                        break;
                     case 2:
                     case 3:
                         board.cards[BLACK][i - 2] = card;
+                        break;
                     case 4:
                         board.side_card = card;
+                        break;
                 }
             }
+            set_hash(&board);
         } else if (command == "get") {
             string search_time;
             stream >> search_time;

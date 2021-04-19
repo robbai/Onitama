@@ -14,15 +14,8 @@ extern Param PARAMS[];
 
 void init_search();
 
-Board get_pv_leaf(Board board);
-
 Move start_search(Board *board, float search_time = 1, bool silent = false,
                   uint8_t num_threads = MAX_THREADS);
-
-struct Line {
-    int length = 0;         // Number of moves in the line.
-    Move moves[MAX_DEPTH];  // The line.
-};
 
 class Thread {
  private:
@@ -37,15 +30,12 @@ class Thread {
     bool is_killer(uint8_t ply, Move move, uint8_t killer_num = KILLER_NUM);
 
  public:
-    Line pv_line = {};
     bool stop = false;
     uint8_t th = 0;
     Move move_lists[MAX_DEPTH][MAX_MOVES];
 
     void reset();
-    Board get_pv_leaf(Board board);
-    int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
-               bool following_pv, Line *curr_line);
+    int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb);
 };
 
 #endif  // ONITAMA_SEARCH_H
