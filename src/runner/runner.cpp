@@ -2,14 +2,14 @@
 #include <iostream>
 #include <sstream>
 #include "runner.h"
-#include "board.h"
-#include "search.h"
-#include "util.h"
-#include "move_gen.h"
-#include "make_move.h"
-#include "version.h"
-#include "tt/ttable.h"
-#include "tt/zobrist.h"
+#include "../board.h"
+#include "../search.h"
+#include "../util.h"
+#include "../move_gen.h"
+#include "../make_move.h"
+#include "../version.h"
+#include "../tt/ttable.h"
+#include "../tt/zobrist.h"
 
 using std::string;
 

@@ -2,7 +2,7 @@
 #include "client.h"
 #include "tt/zobrist.h"
 #include "evaluate.h"
-#include "runner.h"
+#include "runner/runner.h"
 #include "search.h"
 
 int main(int argc, char *argv[]) {
