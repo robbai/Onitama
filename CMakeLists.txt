@@ -52,8 +52,8 @@ add_executable(
         src/tt/zobrist.h
         src/evaluate.cpp
         src/evaluate.h
-        src/runner.cpp
-        src/runner.h
+        src/runner/runner.cpp
+        src/runner/runner.h
         src/tune.cpp
         src/tune.h
 )

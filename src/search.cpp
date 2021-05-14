@@ -342,7 +342,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return beta;
 
     // Delta prune (futility).
-    if (value < alpha - 2887)
+    if (!is_mate_value(beta) && value < alpha - 2887)
         return alpha;
 
     if (value > alpha)

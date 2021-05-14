@@ -2,6 +2,7 @@
 #include "tt/zobrist.h"
 #include "evaluate.h"
 #include "tune.h"
+#include "search.h"
 
 int main() {
     init_zobrist();
