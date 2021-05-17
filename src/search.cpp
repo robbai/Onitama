@@ -31,6 +31,14 @@ enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
+namespace ProbCut {
+    const int D = 8;
+    const int DP = 4;
+    const float a = 1.5007311;
+    const float b = 0.64424325;
+    const int T_sigma = 1021;
+}  // namespace ProbCut
+
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
@@ -149,6 +157,17 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (alpha >= beta)
                 return entry->value;
         }
+    }
+
+    // ProbCut.
+    if (!pv_node && depth == ProbCut::D) {
+        int bound = (beta - ProbCut::b + ProbCut::T_sigma) / ProbCut::a;
+        if (search(board, ProbCut::DP, bound - 1, bound, ply, false) >= bound)
+            return beta;
+
+        bound = (alpha - ProbCut::b - ProbCut::T_sigma) / ProbCut::a;
+        if (search(board, ProbCut::DP, bound, bound + 1, ply, false) <= bound)
+            return alpha;
     }
 
     // Prepare branching.
