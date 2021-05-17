@@ -31,9 +31,6 @@ enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
-const int PARAM_NUM = 0;
-Param PARAMS[] = {};
-
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)

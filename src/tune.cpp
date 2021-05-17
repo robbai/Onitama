@@ -5,12 +5,13 @@
 #include <random>
 #include "tune.h"
 #include "search.h"
+#include "evaluate.h"
 #include "make_move.h"
 #include "tt/ttable.h"
 
 constexpr uint16_t MAX_GAME_LENGTH = 96;
 
-constexpr float SEARCH_TIME = 0.05;
+constexpr float SEARCH_TIME = 0.005;
 
 float run_match(Board board, float params1[], float params2[], const bool reinit_search);
 
@@ -64,13 +65,16 @@ int run_tune(const float magnitude, const float initial_delta, const bool reinit
         board.cards[BLACK][1] = cards[3];
         board.side_card = cards[4];
         board.turn = cards[5] % 2;
+        std::fill(USED_PARAM, USED_PARAM + PARAM_NUM, 0);
         float match = run_match(board, params1, params2, reinit_search);
 
         // Apply change.
         for (int i = 0; i < PARAM_NUM; ++i) {
-            PARAMS[i].value += ak * match / (ck * deltas[i]);
-            PARAMS[i].value = std::max(PARAMS[i].minimum,
-                                       std::min(PARAMS[i].maximum, PARAMS[i].value));
+            if (USED_PARAM[i]) {
+                PARAMS[i].value += ak * match / (ck * deltas[i]);
+                PARAMS[i].value = std::max(PARAMS[i].minimum,
+                                           std::min(PARAMS[i].maximum, PARAMS[i].value));
+            }
             std::cout << PARAMS[i].value << (i == PARAM_NUM - 1 ? "]" : ", ");
         }
 

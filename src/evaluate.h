@@ -3,6 +3,11 @@
 
 
 #include "board.h"
+#include "tune.h"
+
+extern const int PARAM_NUM;
+extern Param PARAMS[];
+extern bool USED_PARAM[];
 
 namespace Evaluation {
     extern const int TOTAL_PARAMETERS;
