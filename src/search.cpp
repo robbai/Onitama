@@ -517,9 +517,14 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                                 std::copysign((mate_plies + 1) / 2, value));
                         value_str = "#" + std::to_string(mate_depth);
                     } else {
-                        value_str = std::to_string(to_centi(value));
+                        char value_buff[6];
+                        snprintf(value_buff, sizeof(value_buff), "%2.2f",
+                                 to_centi(value) / 100.0);
+                        value_str = value_buff;
+                        if (value > 0)
+                            value_str = "+" + value_str;
                     }
-                    printf("Depth %2i: Evaluation =%5s, Nodes = %10llu, TB-hits = "
+                    printf("Depth %2i: Eval = %6s, Nodes = %10llu, TB-hits = "
                            "%8llu, "
                            "TT-hits "
                            "= %8llu, %.3fs, "
