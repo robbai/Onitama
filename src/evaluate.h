@@ -5,8 +5,6 @@
 #include "board.h"
 
 namespace Evaluation {
-    extern bool USE_NNUE;
-
     extern const int TOTAL_PARAMETERS;
     extern int PARAMETERS[];
 }  // namespace Evaluation
@@ -14,7 +12,7 @@ namespace Evaluation {
 
 void init_evaluation_parameters();
 
-int evaluate(Board *board);
+int evaluate(Board *board, bool use_nnue = true);
 
 int to_centi(int evaluation);
 

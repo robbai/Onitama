@@ -210,7 +210,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 if (stage == QUIET) {
                     sort_moves(board, moves, size);
                     if (depth < 7)
-                        static_value = evaluate(board);
+                        static_value = evaluate(board, false);
                 }
 
                 break;

@@ -254,8 +254,6 @@ const int MAP[3200] = {
 constexpr int MATERIAL = 100;
 
 namespace Evaluation {
-    bool USE_NNUE = true;
-
     const int TOTAL_PARAMETERS = 1248;
     int PARAMETERS[Evaluation::TOTAL_PARAMETERS];
 }  // namespace Evaluation
@@ -414,8 +412,8 @@ int evaluate_black(Board *board, bool phase) {
     return eval;
 }
 
-int evaluate(Board *board) {
-    if (Evaluation::USE_NNUE)
+int evaluate(Board *board, bool use_nnue) {
+    if (use_nnue)
         return evaluate_nnue(board);
 
     float phase = __builtin_popcount(board->pieces[WHITE][STUDENT] |
