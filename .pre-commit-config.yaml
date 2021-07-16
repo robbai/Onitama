@@ -5,7 +5,7 @@ default_language_version:
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: master
+  rev: v4.0.1
   hooks:
   - id: check-added-large-files
   - id: check-merge-conflict
@@ -17,7 +17,7 @@ repos:
   - id: trailing-whitespace
 
 - repo: https://gitlab.com/daverona/pre-commit/cpp
-  rev: master
+  rev: 0.8.0
   hooks:
   - id: clang-format
     args: [-style=file]
@@ -25,23 +25,23 @@ repos:
     args: ['--filter=-build/c++11, -legal/copyright, -build/include_subdir, -build/header_guard, -whitespace/line_length, -runtime/references, -runtime/string, -whitespace/braces, -runtime/arrays,']
 
 - repo: https://github.com/ambv/black
-  rev: stable
+  rev: 21.6b0
   hooks:
   - id: black
 
 - repo: https://gitlab.com/pycqa/flake8
-  rev: master
+  rev: 3.9.2
   hooks:
   - id: flake8
 
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: master
+  rev: v2.1.0
   hooks:
   - id: pretty-format-yaml
     args: [--autofix]
 
 - repo: https://github.com/pycqa/isort
-  rev: master
+  rev: 5.9.2
   hooks:
   - id: isort
     args: [--profile, black, --filter-files, --length-sort]
