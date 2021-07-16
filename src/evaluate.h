@@ -5,6 +5,8 @@
 #include "board.h"
 
 namespace Evaluation {
+    extern bool USE_NNUE;
+
     extern const int TOTAL_PARAMETERS;
     extern int PARAMETERS[];
 }  // namespace Evaluation

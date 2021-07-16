@@ -210,7 +210,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 if (stage == QUIET) {
                     sort_moves(board, moves, size);
                     if (depth < 7)
-                        static_value = evaluate(board) * (board->turn ? -1 : 1);
+                        static_value = evaluate(board);
                 }
 
                 break;
@@ -353,7 +353,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return -(MIN_EVAL + board->move_count + 1);
 
     // Evaluate.
-    int value = evaluate(board) * (board->turn ? -1 : 1);
+    int value = evaluate(board);
     if (value >= beta)
         return beta;
 

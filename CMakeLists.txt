@@ -57,6 +57,11 @@ add_executable(
         src/evaluate.h
         src/runner/runner.cpp
         src/runner/runner.h
+        src/nnue/layer.h
+        src/nnue/nnue.cpp
+        src/nnue/nnue.h
+        src/nnue/network.cpp
+        src/nnue/network.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)
