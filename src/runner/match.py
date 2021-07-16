@@ -60,7 +60,12 @@ class Match:
             + ", ".join(CARD_NAMES[c] + " (" + str(c) + ")" for c in game1.cards)
         )
 
-        for i, game in enumerate((game1, game2,)):
+        for i, game in enumerate(
+            (
+                game1,
+                game2,
+            )
+        ):
             new_setup: str = "new " + " ".join(str(c) for c in game.cards)
             self.send(new_setup)
             print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
