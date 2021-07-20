@@ -234,7 +234,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             int8_t reduction = 0;
             if (stage == QUIET && move_num) {
                 // Futility prune.
-                if (!root && !is_mate_value(alpha) && !is_mate_value(beta) &&
+                if (!pv_node && !is_mate_value(alpha) && !is_mate_value(beta) &&
                     MIN_EVAL != static_value && static_value < alpha - 484 * (depth + 1))
                     break;
 
