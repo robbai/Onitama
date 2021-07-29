@@ -22,14 +22,6 @@ Turn parse_colour(const string colour) {
     return (Turn)(colour == "red");
 }
 
-Card parse_card(const string card_name) {
-    for (int i = 0; i < CARD_NUM; ++i) {
-        if (to_lower(CARD_NAMES[i]) == card_name)
-            return (Card) i;
-    }
-    return CARD_NONE;
-}
-
 void Client::send(string message) {
     std::cout << "< " << message << std::endl;
     ws->send(message);

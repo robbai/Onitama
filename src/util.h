@@ -6,22 +6,24 @@
 #include "board.h"
 #include "types.h"
 
-const std::string CARD_NAMES[] = {
+using std::string;
+
+const string CARD_NAMES[] = {
         "Rabbit",  "Monkey", "Boar",     "Goose",  "Cobra", "Crab", "Horse", "Dragon",
         "Rooster", "Crane",  "Elephant", "Mantis", "Tiger", "Frog", "Ox",    "Eel",
 };
 
-const std::string SQUARE_NAMES[] = {
+const string SQUARE_NAMES[] = {
         "a1", "b1", "c1", "d1", "e1", "a2", "b2", "c2", "d2", "e2", "a3", "b3", "c3",
         "d3", "e3", "a4", "b4", "c4", "d4", "e4", "a5", "b5", "c5", "d5", "e5",
 };
 
-std::string pretty_bitboard(Bitboard bitboard, bool card = false);
-std::string pretty_board(Board *board);
-std::string move_string(Board *board, Move move);
-std::string to_lower(std::string string);
-
-bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to = 0);
+string pretty_bitboard(Bitboard bitboard, bool card = false);
+string pretty_board(Board *board);
+string move_string(Board *board, Move move);
+Card parse_card(string card_name);
+bool is_number(string &string);
+string to_lower(string string);
 
 void insertion_sort(Move *moves, int *values, int size);
 

@@ -14,6 +14,13 @@
 using std::string;
 
 
+Card parse_card_input(string card_input) {
+    if (is_number(card_input))
+        return (Card) std::stoi(card_input);
+    return parse_card(card_input);
+}
+
+
 int use_runner() {
     Board board;
 
@@ -37,10 +44,10 @@ int use_runner() {
         } else if (command == "new") {
             board = Board();
             TTABLE.clear();
-            string card_name;
+            string card_input;
             for (uint8_t i = 0; i < 5; ++i) {
-                stream >> card_name;
-                Card card = static_cast<Card>(std::stoi(card_name));
+                stream >> card_input;
+                Card card = parse_card_input(card_input);
                 switch (i) {
                     case 0:
                     case 1:

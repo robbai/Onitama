@@ -1,11 +1,10 @@
-#include <utility>
 #include <algorithm>
 
 #include "util.h"
 #include "move_bits.h"
 
-std::string pretty_bitboard(Bitboard bitboard, bool card) {
-    std::string str = "+-----------+\n";
+string pretty_bitboard(Bitboard bitboard, bool card) {
+    string str = "+-----------+\n";
     for (int rank = (BOARD_LENGTH - 1); rank >= 0; --rank) {
         str += "| ";
         for (int file = 0; file < BOARD_LENGTH; ++file) {
@@ -20,8 +19,8 @@ std::string pretty_bitboard(Bitboard bitboard, bool card) {
     return str + "+-----------+";
 }
 
-std::string pretty_board(Board *board) {
-    std::string str = "  +---+---+---+---+---+\n";
+string pretty_board(Board *board) {
+    string str = "  +---+---+---+---+---+\n";
     for (int rank = (BOARD_LENGTH - 1); rank >= 0; --rank) {
         for (int file = 0; file < BOARD_LENGTH; ++file) {
             Bitboard mask = ((Bitboard) 1 << (file + rank * BOARD_LENGTH));
@@ -57,28 +56,31 @@ std::string pretty_board(Board *board) {
     return str;
 }
 
-std::string move_string(Board *board, Move move) {
+string move_string(Board *board, Move move) {
     int from = MoveBits::from(move);
     int to = MoveBits::to(move);
     return CARD_NAMES[board->cards[board->turn][MoveBits::card_index(move)]] + ":" +
            SQUARE_NAMES[from] + SQUARE_NAMES[to];
 }
 
-std::string to_lower(std::string string) {
+Card parse_card(string card_name) {
+    card_name = to_lower(card_name);
+    for (int i = 0; i < CARD_NUM; ++i) {
+        if (to_lower(CARD_NAMES[i]) == card_name)
+            return (Card) i;
+    }
+    return CARD_NONE;
+}
+
+bool is_number(string &string) {
+    return !string.empty() && std::all_of(string.begin(), string.end(), ::isdigit);
+}
+
+string to_lower(string string) {
     std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) {
         return std::tolower(c);
     });
     return string;
-}
-
-bool bump_move(Move *moves, uint8_t size, Move move, uint8_t to) {
-    for (uint8_t i = to; i < size; ++i) {
-        if (moves[i] == move) {
-            std::swap(moves[to], moves[i]);
-            return true;
-        }
-    }
-    return false;
 }
 
 void insertion_sort(Move *moves, int *values, int size) {
