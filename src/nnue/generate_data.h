@@ -1,0 +1,6 @@
+#ifndef ONITAMA_GENERATE_DATA_H
+#define ONITAMA_GENERATE_DATA_H
+
+int generate_data(int TARGET_NUM = 10e4);
+
+#endif  // ONITAMA_GENERATE_DATA_H

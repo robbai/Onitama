@@ -4,6 +4,7 @@
 #include "evaluate.h"
 #include "runner/runner.h"
 #include "search.h"
+#include "nnue/generate_data.h"
 #include "nnue/network.h"
 
 int main(int argc, char *argv[]) {
@@ -14,6 +15,8 @@ int main(int argc, char *argv[]) {
     init_network();
 
     if (argc > 1) {
+        if (!strcmp(argv[1], "generate"))
+            return generate_data();
         return use_runner();
     }
 

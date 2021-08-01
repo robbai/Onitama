@@ -57,6 +57,8 @@ add_executable(
         src/evaluate.h
         src/runner/runner.cpp
         src/runner/runner.h
+        src/nnue/generate_data.cpp
+        src/nnue/generate_data.h
         src/nnue/layer.h
         src/nnue/nnue.cpp
         src/nnue/nnue.h

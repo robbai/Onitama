@@ -34,6 +34,8 @@ namespace ProbCut {
     const int T_sigma = 1369;
 }  // namespace ProbCut
 
+int latest_search_value;
+
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++)
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
@@ -638,6 +640,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                 }
 
                 best_move = get_tt_move(board);
+                latest_search_value = value;
 
                 // Output.
                 if (!silent) {

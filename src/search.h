@@ -6,9 +6,13 @@
 
 constexpr uint8_t MAX_DEPTH = 64;
 
+extern int latest_search_value;
+
 const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
 void init_search();
+
+bool is_mate_value(int value);
 
 Move start_search(Board *board, float search_time = 1, bool silent = false,
                   uint8_t num_threads = MAX_THREADS);
