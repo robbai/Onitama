@@ -353,12 +353,13 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return -(MIN_EVAL + board->move_count + 1);
 
     // Evaluate.
-    int value = evaluate(board);
+    bool win_threat = board->has_winning_move(!board->turn);
+    int value = (win_threat ? MIN_EVAL + board->move_count + 2 : evaluate(board));
     if (value >= beta)
         return beta;
 
     // Delta prune (futility).
-    if (!is_mate_value(beta) && value < alpha - 2887)
+    if (!win_threat && value < alpha - 2887 && !is_mate_value(beta))
         return alpha;
 
     if (value > alpha)
@@ -368,7 +369,9 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return alpha;
 
     Move *moves = move_lists[ply];
-    uint8_t size = gen_moves(board, moves, board->pieces[!board->turn][STUDENT]);
+    uint8_t size =
+            gen_moves(board, moves,
+                      win_threat ? FULL_BITBOARD : board->pieces[!board->turn][STUDENT]);
 
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
