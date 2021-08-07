@@ -80,7 +80,7 @@ std::string verify_pv(Board *board, uint8_t depth) {
 
 bool is_mate_value(int value) {
     value = -abs(value);
-    return MIN_EVAL != value && value < MIN_EVAL + MAX_DEPTH + 255;
+    return value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb) {
