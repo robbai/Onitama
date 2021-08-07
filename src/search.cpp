@@ -504,8 +504,8 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                 alpha = MIN_EVAL, beta = -MIN_EVAL;
             } else {
                 if (depth >= 5) {
-                    alpha = value - WINDOW;
-                    beta = value + WINDOW;
+                    alpha = std::max(value - WINDOW, MIN_EVAL);
+                    beta = std::min(value + WINDOW, -MIN_EVAL);
                 }
 
                 best_move = get_tt_move(board);
