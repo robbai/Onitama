@@ -1,7 +1,18 @@
 from sys import argv
-from typing import Tuple, Optional
+from random import shuffle
+from typing import List, Tuple, Optional
+from itertools import permutations
 
+from cards import NUM_CARDS
 from match import Match
+
+
+def cards_gen():
+    all_cards: List[Tuple[int]] = list(permutations(range(NUM_CARDS), 5))
+    shuffle(all_cards)
+    for cards in all_cards:
+        if cards[0] < cards[1] and cards[2] < cards[3]:
+            yield list(cards)
 
 
 def main():
@@ -11,9 +22,9 @@ def main():
 
     match: Match = Match(argv[1:])
 
-    # Run games.
-    while True:
-        match.run_match()
+    # Run matches.
+    for cards in cards_gen():
+        match.run_match(cards)
         print(
             match.engine_names[0]
             + " "

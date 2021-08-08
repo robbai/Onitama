@@ -1,5 +1,5 @@
 from random import sample
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from cards import NUM_CARDS, CARD_MOVES, CARD_INDEXES
 
@@ -33,7 +33,7 @@ SQUARES: Dict[str, int] = {
 
 
 class Game:
-    def __init__(self, cards: List[int] = None):
+    def __init__(self, cards: Optional[List[int]] = None):
         self.cards = cards
         if not cards:
             self.cards: List[int] = sample(range(NUM_CARDS), 5)

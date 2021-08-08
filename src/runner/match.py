@@ -52,8 +52,10 @@ class Match:
     def quit_engines(self):
         self.send("quit")
 
-    def run_match(self, search_time: float = 0.1, draw_plies: int = 96):
-        game1: Game = Game()
+    def run_match(
+        self, cards: List[int] = None, search_time: float = 0.1, draw_plies: int = 96
+    ):
+        game1: Game = Game(cards)
         game2: Game = game1.copy()
         print(
             "Cards: "
