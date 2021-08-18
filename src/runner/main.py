@@ -5,6 +5,7 @@ from itertools import permutations
 
 from cards import NUM_CARDS
 from match import Match
+from history import write_result
 
 
 def cards_gen():
@@ -20,11 +21,16 @@ def main():
         print("Incorrect arguments: " + str(argv[1:]))
         return
 
-    match: Match = Match(argv[1:])
+    engine_paths: List[str] = argv[1:]
+    match: Match = Match(engine_paths)
 
     # Run matches.
     for cards in cards_gen():
-        match.run_match(cards)
+        try:
+            match.run_match(cards)
+        except KeyboardInterrupt:
+            print("\nKeyboard interrupt.")
+            break
         print(
             match.engine_names[0]
             + " "
@@ -44,6 +50,7 @@ def main():
         print()
 
     match.quit_engines()
+    write_result(engine_paths, match.move_time, match.score)
 
 
 if __name__ == "__main__":

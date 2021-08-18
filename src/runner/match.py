@@ -4,10 +4,11 @@ from subprocess import PIPE, Popen
 
 from game import Game
 from cards import CARD_NAMES
+from history import load_previous_result
 
 
 class Match:
-    def __init__(self, engine_paths: List[str]):
+    def __init__(self, engine_paths: List[str], move_time: float = 0.1):
         self.engines: List[Popen] = [
             Popen(
                 [path, "runner"], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding="UTF8"
@@ -17,7 +18,8 @@ class Match:
         self.engine_names: List[str] = [
             self.ask(i, "name").title() for i in range(len(engine_paths))
         ]
-        self.score: List[int, int] = [0, 0]
+        self.move_time: float = move_time
+        self.score: List[float] = load_previous_result(engine_paths, move_time)
 
     @property
     def games(self) -> int:
@@ -50,11 +52,10 @@ class Match:
         return elo_range[0] * elo_range[1] > 0
 
     def quit_engines(self):
-        self.send("quit")
+        for engine in self.engines:
+            engine.stdin.write("quit\n")
 
-    def run_match(
-        self, cards: List[int] = None, search_time: float = 0.1, draw_plies: int = 96
-    ):
+    def run_match(self, cards: List[int] = None, draw_plies: int = 96):
         game1: Game = Game(cards)
         game2: Game = game1.copy()
         print(
@@ -73,7 +74,7 @@ class Match:
             print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
             for _ in range(draw_plies):
                 moving: bool = game.turn ^ i
-                move: str = self.ask(moving, "get " + str(search_time))
+                move: str = self.ask(moving, "get " + str(self.move_time))
                 print(move, end=" ", flush=True)
                 if not move or not game.move(move):
                     self.score[not moving] += 1
@@ -90,7 +91,7 @@ class Match:
                 print("1/2-1/2")
 
     def send(self, message: str):
-        for index, engine in enumerate(self.engines):
+        for engine in self.engines:
             engine.stdin.write(message + "\n")
             engine.stdin.flush()
 
