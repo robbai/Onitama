@@ -160,13 +160,15 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     }
 
     // ProbCut.
-    if (!pv_node && depth == ProbCut::D) {
+    if (depth == ProbCut::D) {
         int bound = (beta - ProbCut::b + ProbCut::T_sigma) / ProbCut::a;
-        if (search(board, ProbCut::DP, bound - 1, bound, ply, false) >= bound)
+        if (!is_mate_value(beta) &&
+            search(board, ProbCut::DP, bound - 1, bound, ply, false) >= bound)
             return beta;
 
         bound = (alpha - ProbCut::b - ProbCut::T_sigma) / ProbCut::a;
-        if (search(board, ProbCut::DP, bound, bound + 1, ply, false) <= bound)
+        if (!is_mate_value(alpha) &&
+            search(board, ProbCut::DP, bound, bound + 1, ply, false) <= bound)
             return alpha;
     }
 
