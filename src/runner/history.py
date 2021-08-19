@@ -1,7 +1,8 @@
 import hashlib
 from typing import List
+from os.path import join, dirname
 
-HISTORY_FILE: str = "history.txt"
+HISTORY_FILE: str = join(dirname(__file__), "history.txt")
 with open(HISTORY_FILE, "a") as file:
     pass  # Create file.
 
@@ -45,3 +46,10 @@ def write_result(
     else:
         lines.append(new_line)
     open(HISTORY_FILE, "w").writelines(lines)
+
+
+if __name__ == "__main__":
+    from sys import argv
+
+    for path in argv[1:]:
+        print(path, sha256(path))
