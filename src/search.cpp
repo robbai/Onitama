@@ -233,7 +233,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (stage == QUIET && move_num) {
                 // Futility prune.
                 if (!pv_node && !is_mate_value(alpha) && !is_mate_value(beta) &&
-                    MIN_EVAL != static_value && static_value < alpha - 484 * (depth + 1))
+                    MIN_EVAL != static_value && static_value < alpha - 568 * (depth + 1))
                     break;
 
                 // Late-move reduction.
@@ -357,7 +357,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return beta;
 
     // Delta prune (futility).
-    if (!win_threat && value < alpha - 2887 && !is_mate_value(beta))
+    if (!win_threat && value < alpha - 3512 && !is_mate_value(beta))
         return alpha;
 
     if (value > alpha)
