@@ -104,21 +104,17 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     }
 
     // Probe TB.
-    if (check_tb) {
-        uint8_t students_left = __builtin_popcount(board->pieces[WHITE][STUDENT] |
-                                                   board->pieces[BLACK][STUDENT]);
-        if (students_left <= Tablebase::STUDENT_MEN) {
-            TBEntry entry = probe_tb(board);
-            ++nodes;
-            ++tb_hits;
-            switch (entry.state) {
-                case WIN:
-                    return -MIN_EVAL - board->move_count - entry.iter;
-                case LOSS:
-                    return MIN_EVAL + board->move_count + entry.iter;
-                default:
-                    return 0;
-            }
+    if (check_tb && board->student_count <= Tablebase::STUDENT_MEN) {
+        TBEntry entry = probe_tb(board);
+        ++nodes;
+        ++tb_hits;
+        switch (entry.state) {
+            case WIN:
+                return -MIN_EVAL - board->move_count - entry.iter;
+            case LOSS:
+                return MIN_EVAL + board->move_count + entry.iter;
+            default:
+                return 0;
         }
     }
 
@@ -210,7 +206,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
                 // Sort quiet moves.
                 if (stage == QUIET) {
-                    sort_moves(board, moves, size);
+                    sort_moves(board, moves, size, searched_tt_move);
                     if (depth < 7)
                         static_value = evaluate(board, false);
                 }
@@ -408,7 +404,7 @@ void Thread::reset() {
     }
 }
 
-void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
+void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool tt_move_exists) {
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
@@ -418,6 +414,9 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size) {
         uint8_t to = MoveBits::to(move);
         bool piece_type = MoveBits::piece_type(move);
         sort_values[i] = history[board->turn][from][to][piece_type];
+
+        if (!tt_move_exists)
+            sort_values[i] = sort_values[i] * 10000 + evaluate_move(board, move);
     }
 
     // Sort.

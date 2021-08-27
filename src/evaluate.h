@@ -16,4 +16,6 @@ int evaluate(Board *board, bool use_nnue = true);
 
 int to_centi(int evaluation);
 
+int evaluate_move(Board *board, Move move);
+
 #endif  // ONITAMA_EVALUATE_H

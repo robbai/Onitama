@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "evaluate.h"
 #include "nnue/nnue.h"
+#include "move_bits.h"
 
 const int MAP[3200] = {
         0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    10,   11,   12,
@@ -416,18 +417,47 @@ int evaluate(Board *board, bool use_nnue) {
     if (use_nnue)
         return evaluate_nnue(board);
 
-    float phase = __builtin_popcount(board->pieces[WHITE][STUDENT] |
-                                     board->pieces[BLACK][STUDENT]);
-    phase /= 8;
-
     int phase1 = evaluate_white(board, false) - evaluate_black(board, false);
-    phase1 *= 10 * phase;
+    phase1 *= (10 * board->student_count) / 8;
     int phase2 = evaluate_white(board, true) - evaluate_black(board, true);
-    phase2 *= 10 * (1 - phase);
+    phase2 *= (10 * (8 - board->student_count)) / 8;
 
     return board->turn ? (-phase1 - phase2) : (phase1 + phase2);
 }
 
 int to_centi(int evaluation) {
     return evaluation / 10;
+}
+
+/*
+ * Approximates the change in evaluation from a move.
+ */
+int evaluate_move(Board *board, Move move) {
+    uint8_t from = MoveBits::from(move);
+    uint8_t to = MoveBits::to(move);
+    if (board->turn) {
+        from = (SQUARE_NUM - 1 - from);
+        to = (SQUARE_NUM - 1 - to);
+    }
+    bool piece_type = MoveBits::piece_type(move);
+    bool card_index = MoveBits::card_index(move);
+
+    int value = 0;
+    int index = (((to * CARD_NUM + board->side_card) * PIECE_TYPES_NUM + piece_type) *
+                 PLAYERS_NUM) *
+                2;
+    value += Evaluation::PARAMETERS[MAP[index]] * board->student_count;
+    value += Evaluation::PARAMETERS[MAP[index + 1]] * (8 - board->student_count);
+    value += Evaluation::PARAMETERS[MAP[index + 2]] * board->student_count;
+    value += Evaluation::PARAMETERS[MAP[index + 3]] * (8 - board->student_count);
+    index = (((from * CARD_NUM + board->cards[board->turn][card_index]) *
+                      PIECE_TYPES_NUM +
+              piece_type) *
+             PLAYERS_NUM) *
+            2;
+    value -= Evaluation::PARAMETERS[MAP[index]] * board->student_count;
+    value -= Evaluation::PARAMETERS[MAP[index + 1]] * (8 - board->student_count);
+    value -= Evaluation::PARAMETERS[MAP[index + 2]] * board->student_count;
+    value -= Evaluation::PARAMETERS[MAP[index + 3]] * (8 - board->student_count);
+    return value;
 }
