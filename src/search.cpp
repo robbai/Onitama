@@ -118,6 +118,15 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         }
     }
 
+    // Score repetitions in search as a draw.
+    for (uint8_t p = (ply & 1); p < ply; p += 2) {
+        if (this->hash_line[p] == board->hash) {
+            ++nodes;
+            return 0;
+        }
+    }
+    this->hash_line[ply] = board->hash;
+
     // Mate-distance pruning.
     if (!root) {
         alpha = std::max(alpha, MIN_EVAL + board->move_count);

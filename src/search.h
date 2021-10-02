@@ -20,6 +20,7 @@ class Thread {
     uint16_t history[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM][PIECE_TYPES_NUM];
     Move killers[MAX_DEPTH][KILLER_NUM];
     int sort_values[MAX_MOVES] = {};
+    Hash hash_line[MAX_DEPTH];
 
     void sort_moves(Board *board, Move *moves, uint8_t size, bool tt_move_exists = false);
     int q_search(Board *board, int alpha, int beta, int ply);
