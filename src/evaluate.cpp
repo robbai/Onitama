@@ -414,7 +414,7 @@ int evaluate_black(Board *board, bool phase) {
 }
 
 int evaluate(Board *board, bool use_nnue) {
-    if (use_nnue)
+    if (use_nnue && !(board->student_count % 2))
         return evaluate_nnue(board);
 
     int phase1 = evaluate_white(board, false) - evaluate_black(board, false);
