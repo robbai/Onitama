@@ -71,6 +71,8 @@ class Match:
         ):
             new_setup: str = "new " + " ".join(str(c) for c in game.cards)
             self.send(new_setup)
+            if not i:
+                self.send("tb 2")
             print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
             for _ in range(draw_plies):
                 moving: bool = game.turn ^ i

@@ -10,6 +10,7 @@
 #include "../version.h"
 #include "../tt/ttable.h"
 #include "../tt/zobrist.h"
+#include "../tb/tb_probe.h"
 
 using std::string;
 
@@ -63,6 +64,11 @@ int use_runner() {
                 }
             }
             set_hash(&board);
+        } else if (command == "tb") {
+            drop_tb();
+            string total_men;
+            stream >> total_men;
+            setup_and_generate_tb(&board, std::stoi(total_men) - 2);
         } else if (command == "get") {
             string search_time;
             stream >> search_time;
