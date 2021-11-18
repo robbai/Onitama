@@ -18,11 +18,13 @@ class Thread {
     static const uint8_t KILLER_NUM = 2;
 
     uint16_t history[PLAYERS_NUM][SQUARE_NUM][SQUARE_NUM][PIECE_TYPES_NUM];
+    Move counter_move[SQUARE_NUM][SQUARE_NUM][PIECE_TYPES_NUM];
     Move killers[MAX_DEPTH][KILLER_NUM];
     int sort_values[MAX_MOVES] = {};
     Hash hash_line[MAX_DEPTH];
 
-    void sort_moves(Board *board, Move *moves, uint8_t size, bool tt_move_exists = false);
+    void sort_moves(Board *board, Move *moves, uint8_t size, Move prev_move,
+                    bool tt_move_exists = false);
     int q_search(Board *board, int alpha, int beta, int ply);
     bool is_killer(uint8_t ply, Move move, uint8_t killer_num = KILLER_NUM);
 
@@ -32,7 +34,8 @@ class Thread {
     Move move_lists[MAX_DEPTH][MAX_MOVES];
 
     void reset();
-    int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb);
+    int search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
+               Move prev_move);
 };
 
 #endif  // ONITAMA_SEARCH_H

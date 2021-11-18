@@ -83,7 +83,8 @@ bool is_mate_value(int value) {
     return value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
-int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb) {
+int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb,
+                   Move prev_move = 0) {
     if (stop)
         return 0;
 
@@ -215,7 +216,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
                 // Sort quiet moves.
                 if (stage == QUIET) {
-                    sort_moves(board, moves, size, searched_tt_move);
+                    sort_moves(board, moves, size, prev_move, searched_tt_move);
                     if (depth < 7)
                         static_value = evaluate(board, false);
                 }
@@ -271,22 +272,22 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                                now_check_tb);
+                                now_check_tb, move);
             } else {
                 // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                now_check_tb);
+                                now_check_tb, move);
 
                 // Null window.
                 if (value > alpha && reduction > 0) {
                     value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                    now_check_tb);
+                                    now_check_tb, move);
                 }
 
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, now_check_tb);
+                                    -beta, -alpha, ply + 1, now_check_tb, move);
                 }
             }
 
@@ -304,6 +305,11 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                             uint8_t to = MoveBits::to(move);
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
+
+                            if (prev_move)
+                                counter_move[MoveBits::from(prev_move)][MoveBits::to(
+                                        prev_move)][MoveBits::piece_type(prev_move)] =
+                                        move;
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
@@ -407,13 +413,19 @@ void Thread::reset() {
                     history[i][j][k][l] = 0;
 
     // Killers.
-    for (uint8_t d = 0; d < MAX_DEPTH; ++d) {
+    for (uint8_t d = 0; d < MAX_DEPTH; ++d)
         for (uint8_t k = 0; k < Thread::KILLER_NUM; ++k)
             killers[d][k] = 0;
-    }
+
+    // Counter-moves.
+    for (uint8_t i = 0; i < SQUARE_NUM; ++i)
+        for (uint8_t j = 0; j < SQUARE_NUM; ++j)
+            for (uint8_t k = 0; k < PIECE_TYPES_NUM; ++k)
+                counter_move[i][j][k] = 0;
 }
 
-void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool tt_move_exists) {
+void Thread::sort_moves(Board *board, Move *moves, uint8_t size, Move prev_move,
+                        bool tt_move_exists) {
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
@@ -423,6 +435,10 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool tt_move_ex
         uint8_t to = MoveBits::to(move);
         bool piece_type = MoveBits::piece_type(move);
         sort_values[i] = history[board->turn][from][to][piece_type];
+
+        if (prev_move && move == counter_move[MoveBits::from(prev_move)][MoveBits::to(
+                                         prev_move)][MoveBits::piece_type(prev_move)])
+            sort_values[i] += 1000;
 
         if (!tt_move_exists)
             sort_values[i] = sort_values[i] * 10000 + evaluate_move(board, move);
