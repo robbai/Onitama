@@ -336,8 +336,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         return 0;
 
     // Store in TT.
-    if (entry->depth <= depth || (root && !move_exists(board, entry->move))) {
-        entry->value = best_value;
+    if (entry->depth <= depth || root) {
         if (best_value <= alpha_original) {
             entry->type = UPPER;
         } else if (best_value >= beta) {
