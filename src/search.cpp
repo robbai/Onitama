@@ -262,6 +262,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     if (reduction < 0)
                         reduction = 0;
                 }
+            } else if (!(board->student_count % 2) && MoveBits::capture(move)) {
+                // Re-capture extension.
+                reduction -= 1;
             }
             if (reduction > depth - 1)
                 reduction = depth - 1;
