@@ -32,11 +32,11 @@ enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
 namespace ProbCut {
-    const int D = 8;
+    const int D = 15;
     const int DP = 4;
-    const float a = 1.5007311;
-    const float b = 0.64424325;
-    const int T_sigma = 1021;
+    const float a = 0.618565342;
+    const float b = 0.557412145;
+    const int T_sigma = 536;
 }  // namespace ProbCut
 
 void init_search() {
