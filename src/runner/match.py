@@ -1,5 +1,5 @@
 from math import sqrt, log10
-from typing import List, Tuple, Optional
+from typing import Set, List, Tuple, Optional
 from subprocess import PIPE, Popen
 
 from game import Game
@@ -55,7 +55,7 @@ class Match:
         for engine in self.engines:
             engine.stdin.write("quit\n")
 
-    def run_match(self, cards: List[int] = None, draw_plies: int = 96):
+    def run_match(self, cards: List[int] = None):
         game1: Game = Game(cards)
         game2: Game = game1.copy()
         print(
@@ -74,7 +74,8 @@ class Match:
             if not i:
                 self.send("tb 2")
             print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
-            for _ in range(draw_plies):
+            history: Set[Game] = set()
+            while True:
                 moving: bool = game.turn ^ i
                 move: str = self.ask(moving, "get " + str(self.move_time))
                 print(move, end=" ", flush=True)
@@ -86,11 +87,13 @@ class Match:
                     self.score[moving] += 1
                     print("1-0" if game.turn else "0-1")
                     break
+                if hash(game) in history:
+                    self.score[0] += 0.5
+                    self.score[1] += 0.5
+                    print("1/2-1/2")
+                    break
+                history.add(hash(game))
                 self.send("give " + move)
-            else:
-                self.score[0] += 0.5
-                self.score[1] += 0.5
-                print("1/2-1/2")
 
     def send(self, message: str):
         for engine in self.engines:

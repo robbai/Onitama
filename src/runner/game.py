@@ -1,5 +1,5 @@
 from random import sample
-from typing import Dict, List, Optional
+from typing import Dict, List, Hashable, Optional
 
 from cards import NUM_CARDS, CARD_MOVES, CARD_INDEXES
 
@@ -32,7 +32,7 @@ SQUARES: Dict[str, int] = {
 }
 
 
-class Game:
+class Game(Hashable):
     def __init__(self, cards: Optional[List[int]] = None):
         self.cards = cards
         if not cards:
@@ -109,3 +109,14 @@ class Game:
         copy: "Game" = Game()
         copy.cards = self.cards[:]
         return copy
+
+    def __hash__(self):
+        return hash(
+            (
+                *sorted(self.cards[:2]),
+                *sorted(self.cards[2:4]),
+                self.cards[4],
+                self.turn,
+                *self.pieces,
+            )
+        )
