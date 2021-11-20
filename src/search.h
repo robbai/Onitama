@@ -24,7 +24,7 @@ class Thread {
     Hash hash_line[MAX_DEPTH];
 
     void sort_moves(Board *board, Move *moves, uint8_t size, Move prev_move,
-                    bool tt_move_exists = false);
+                    bool captures = false, bool tt_move_exists = false);
     int q_search(Board *board, int alpha, int beta, int ply);
     bool is_killer(uint8_t ply, Move move, uint8_t killer_num = KILLER_NUM);
 
