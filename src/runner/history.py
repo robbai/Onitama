@@ -33,7 +33,7 @@ def load_previous_result(engine_paths: List[str], move_time: float) -> List[floa
 
 
 def write_result(
-    engine_paths: List[str], move_time: float, score: List[float]
+    engine_paths: List[str], score: List[float], move_time: float
 ) -> List[float]:
     hashes: List[str] = [sha256(engine_path) for engine_path in engine_paths]
     new_line: str = "{},{},{},{},{}\n".format(*hashes, move_time, *score)

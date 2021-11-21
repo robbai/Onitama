@@ -1,3 +1,5 @@
+import logging
+import multiprocessing as mp
 from sys import argv
 from random import shuffle
 from typing import List, Tuple, Optional
@@ -5,7 +7,13 @@ from itertools import permutations
 
 from cards import NUM_CARDS
 from match import Match
-from history import write_result
+from history import write_result, load_previous_result
+
+MOVE_TIME: float = 0.1
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s -> %(message)s", datefmt="%I:%M:%S"
+)
 
 
 def cards_gen():
@@ -16,41 +24,60 @@ def cards_gen():
             yield list(cards)
 
 
+def process(engine_paths, queue: mp.Queue, score_queue: mp.Queue):
+    match: Match = Match(engine_paths, MOVE_TIME)
+    try:
+        for cards in iter(queue.get, None):
+            score_queue.put(match.run_match(cards))
+    except KeyboardInterrupt:
+        pass
+    finally:
+        match.quit_engines()
+
+
 def main():
-    if len(argv) != 3:
-        print("Incorrect arguments: " + str(argv[1:]))
+    if not (3 <= len(argv) <= 4):
+        logging.error("Incorrect arguments: " + str(argv[1:]))
         return
 
-    engine_paths: List[str] = argv[1:]
-    match: Match = Match(engine_paths)
+    # Setup pool.
+    engine_paths: List[str] = argv[1:3]
+    try:
+        cores: int = int(argv[3])
+    except (IndexError, ValueError):
+        cores: int = 1
+    queue: mp.Queue = mp.Queue(maxsize=cores)
+    score_queue: mp.Queue = mp.Queue()
+    pool: mp.Pool = mp.Pool(cores, process, (engine_paths, queue, score_queue))
 
     # Run matches.
-    for cards in cards_gen():
-        try:
-            match.run_match(cards)
-        except KeyboardInterrupt:
-            print("\nKeyboard interrupt.")
-            break
-        print(
-            match.engine_names[0]
-            + " "
-            + str(match.score[0])
-            + "-"
-            + str(match.score[1])
-            + " "
-            + match.engine_names[1]
-        )
-        elo_range: Optional[Tuple[float, float]] = match.get_elo_range()
-        if elo_range:
-            elo: float = sum(elo_range) / len(elo_range)
-            range: float = abs(elo_range[0] - elo_range[1]) / 2
-            print(str(round(elo, 2)) + " ± " + str(round(range, 2)))
-            if Match.is_concordant(elo_range):
-                break
-        print()
+    score: List[float] = load_previous_result(engine_paths, MOVE_TIME)
+    try:
+        for cards in cards_gen():
+            queue.put(cards)
 
-    match.quit_engines()
-    write_result(engine_paths, match.move_time, match.score)
+            if not score_queue.empty():
+                new_score: List[float] = score_queue.get()
+                score[0] += new_score[0]
+                score[1] += new_score[1]
+                elo_range: Optional[Tuple[float, float]] = Match.get_elo_range(score)
+                if elo_range:
+                    elo: float = sum(elo_range) / len(elo_range)
+                    total_range: float = abs(elo_range[0] - elo_range[1]) / 2
+                    logging.info(f"{score}: {elo:.2f} ± {total_range:.2f}")
+                    if Match.is_concordant(elo_range):
+                        break
+                else:
+                    logging.info(str(score))
+
+    # Quit.
+    except KeyboardInterrupt:
+        logging.warning("Keyboard interrupted")
+    finally:
+        write_result(engine_paths, score, MOVE_TIME)
+        [queue.put(None) for _ in range(cores)]
+        pool.close()
+        pool.join()
 
 
 if __name__ == "__main__":

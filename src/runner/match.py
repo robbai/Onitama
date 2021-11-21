@@ -1,14 +1,13 @@
+import logging
 from math import sqrt, log10
 from typing import Set, List, Tuple, Optional
 from subprocess import PIPE, Popen
 
 from game import Game
-from cards import CARD_NAMES
-from history import load_previous_result
 
 
 class Match:
-    def __init__(self, engine_paths: List[str], move_time: float = 0.1):
+    def __init__(self, engine_paths: List[str], move_time: float):
         self.engines: List[Popen] = [
             Popen(
                 [path, "runner"], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding="UTF8"
@@ -19,16 +18,14 @@ class Match:
             self.ask(i, "name").title() for i in range(len(engine_paths))
         ]
         self.move_time: float = move_time
-        self.score: List[float] = load_previous_result(engine_paths, move_time)
 
-    @property
-    def games(self) -> int:
-        return self.score[0] + self.score[1]
-
-    def get_elo_range(self, stdevs: float = 2) -> Optional[Tuple[float, float]]:
-        wins: float = self.score[0]
-        losses: float = self.score[1]
-        games: float = self.games
+    @staticmethod
+    def get_elo_range(
+        score: List[float], stdevs: float = 2
+    ) -> Optional[Tuple[float, float]]:
+        wins: float = score[0]
+        losses: float = score[1]
+        games: float = score[0] + score[1]
         if not wins or not losses or wins == losses:
             return None
         score: float = wins / games
@@ -55,13 +52,11 @@ class Match:
         for engine in self.engines:
             engine.stdin.write("quit\n")
 
-    def run_match(self, cards: List[int] = None):
+    def run_match(self, cards: List[int] = None) -> List[float]:
+        score: List[float] = [0, 0]
+
         game1: Game = Game(cards)
         game2: Game = game1.copy()
-        print(
-            "Cards: "
-            + ", ".join(CARD_NAMES[c] + " (" + str(c) + ")" for c in game1.cards)
-        )
 
         for i, game in enumerate(
             (
@@ -71,29 +66,27 @@ class Match:
         ):
             new_setup: str = "new " + " ".join(str(c) for c in game.cards)
             self.send(new_setup)
-            if not i:
-                self.send("tb 2")
-            print(self.engine_names[i] + "-" + self.engine_names[not i], end=": ")
+            # if not i:
+            #     self.send("tb 2")
             history: Set[Game] = set()
             while True:
                 moving: bool = game.turn ^ i
                 move: str = self.ask(moving, "get " + str(self.move_time))
-                print(move, end=" ", flush=True)
                 if not move or not game.move(move):
-                    self.score[not moving] += 1
-                    print(("1-0" if game.turn else "0-1") + " (Illegal move)")
+                    score[not moving] += 1
+                    logging.warning("Illegal move")
                     break
                 if game.game_over():
-                    self.score[moving] += 1
-                    print("1-0" if game.turn else "0-1")
+                    score[moving] += 1
                     break
                 if hash(game) in history:
-                    self.score[0] += 0.5
-                    self.score[1] += 0.5
-                    print("1/2-1/2")
+                    score[0] += 0.5
+                    score[1] += 0.5
                     break
                 history.add(hash(game))
                 self.send("give " + move)
+
+        return score
 
     def send(self, message: str):
         for engine in self.engines:
