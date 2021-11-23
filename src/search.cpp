@@ -307,8 +307,10 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
 
-                            counters[board->turn][board->side_card] =
-                                    board->cards[board->turn][MoveBits::card_index(move)];
+                            counters[board->cards[board->turn][0]]
+                                    [board->cards[board->turn][1]][board->side_card] =
+                                            board->cards[board->turn]
+                                                        [MoveBits::card_index(move)];
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
@@ -415,11 +417,11 @@ void Thread::reset() {
         for (uint8_t k = 0; k < Thread::KILLER_NUM; ++k)
             killers[d][k] = 0;
 
-    // Counter-moves.
-    for (uint8_t i = 0; i < CARD_NUM; ++i) {
-        counters[WHITE][i] = CARD_NUM;
-        counters[BLACK][i] = CARD_NUM;
-    }
+    // Counter-cards.
+    for (uint8_t i = 0; i < CARD_NUM; ++i)
+        for (uint8_t j = 0; j < CARD_NUM; ++j)
+            for (uint8_t k = 0; k < CARD_NUM; ++k)
+                counters[i][j][k] = CARD_NUM;
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
@@ -440,8 +442,9 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         sort_values[i] = history[board->turn][from][to][piece_type];
 
         if (board->cards[board->turn][MoveBits::card_index(move)] ==
-            counters[board->turn][board->side_card])
-            sort_values[i] += 500;
+            counters[board->cards[board->turn][0]][board->cards[board->turn][1]]
+                    [board->side_card])
+            sort_values[i] += 1000;
 
         if (!tt_move_exists)
             sort_values[i] = sort_values[i] * 10000 + evaluate_move(board, move);
