@@ -367,7 +367,8 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
 
     // Evaluate.
     bool win_threat = board->has_winning_move(!board->turn);
-    int value = (win_threat ? MIN_EVAL + board->move_count + 2 : evaluate(board));
+    int value = (win_threat ? MIN_EVAL + board->move_count + 2
+                            : evaluate(board) + 2 * (nodes & 5) - 5);
     if (value >= beta)
         return beta;
 
