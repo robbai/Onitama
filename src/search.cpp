@@ -23,7 +23,6 @@ constexpr int MIN_EVAL = -100000, WINDOW = 235;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
-uint64_t tt_hits = 0;
 
 uint8_t root_size = 0;
 
@@ -147,7 +146,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     uint32_t remaining_hash = (board->hash >> 32);
     bool hash_match = (entry->remaining_hash == remaining_hash);
     if (hash_match && !root) {
-        ++tt_hits;
         if (!pv_node && entry->depth >= depth) {
             switch (entry->type) {
                 case EXACT:
@@ -507,7 +505,6 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
         // Setup main search.
         nodes = 0;
         tb_hits = 0;
-        tt_hits = 0;
         clock_t start = clock();
         int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
 
@@ -557,16 +554,14 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                         snprintf(value_buff, sizeof(value_buff), "%2.2f",
                                  to_centi(value) / 100.0);
                         value_str = value_buff;
-                        if (value > 0)
+                        if (to_centi(value) > 0)
                             value_str = "+" + value_str;
                     }
                     printf("Depth %2i: Eval = %6s, Nodes = %10llu, TB-hits = "
-                           "%8llu, "
-                           "TT-hits "
-                           "= %8llu, %.3fs, "
+                           "%8llu, %.3fs, Nodes/s = %8llu, "
                            "PV = [%s]\n",
-                           depth, value_str.c_str(), nodes, tb_hits, tt_hits, elapsed,
-                           verify_pv(board, depth).c_str());
+                           depth, value_str.c_str(), nodes, tb_hits, elapsed,
+                           uint64_t(nodes / elapsed), verify_pv(board, depth).c_str());
                 }
 
                 ++depth;
