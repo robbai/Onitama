@@ -12,7 +12,7 @@ namespace Evaluation {
 
 void init_evaluation_parameters();
 
-int evaluate(Board *board, bool use_nnue = true);
+int evaluate(Board *board);
 
 int to_centi(int evaluation);
 

@@ -1,6 +1,5 @@
 #include <algorithm>
 #include "evaluate.h"
-#include "nnue/nnue.h"
 #include "move_bits.h"
 
 const int MAP[3200] = {
@@ -413,10 +412,7 @@ int evaluate_black(Board *board, bool phase) {
     return eval;
 }
 
-int evaluate(Board *board, bool use_nnue) {
-    if (use_nnue && !board->student_delta)
-        return evaluate_nnue(board);
-
+int evaluate(Board *board) {
     int phase1 = evaluate_white(board, false) - evaluate_black(board, false);
     phase1 *= (10 * board->student_count) / 8;
     int phase2 = evaluate_white(board, true) - evaluate_black(board, true);
