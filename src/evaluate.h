@@ -4,18 +4,12 @@
 
 #include "board.h"
 
-namespace Evaluation {
-    extern const int TOTAL_PARAMETERS;
-    extern int PARAMETERS[];
-}  // namespace Evaluation
+constexpr int evaluate(Board *board) {
+    return 1000 * board->student_delta;
+}
 
-
-void init_evaluation_parameters();
-
-int evaluate(Board *board, bool use_nnue = true);
-
-int to_centi(int evaluation);
-
-int evaluate_move(Board *board, Move move);
+constexpr int to_centi(int evaluation) {
+    return evaluation / 10;
+}
 
 #endif  // ONITAMA_EVALUATE_H

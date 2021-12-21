@@ -4,14 +4,11 @@
 #include "evaluate.h"
 #include "runner/runner.h"
 #include "search.h"
-#include "nnue/network.h"
 
 int main(int argc, char *argv[]) {
     init_zobrist();
     init_move_tables();
-    init_evaluation_parameters();
     init_search();
-    init_network();
 
     if (argc > 1) {
         return use_runner();

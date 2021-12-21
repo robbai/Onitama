@@ -522,7 +522,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
     // Evaluate.
     int value = (checkers ? MIN_EVAL + board->move_count + 2
-                          : (evaluate(board) / 16) * 16 + 2 * (nodes & 5) - 5);
+                          : evaluate(board) + 2 * (nodes & 5) - 5);
     if (value >= beta)
         return beta;
 
