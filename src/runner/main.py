@@ -31,8 +31,7 @@ def process(engine_paths, queue: mp.Queue, score_queue: mp.Queue):
             score_queue.put(match.run_match(cards))
     except KeyboardInterrupt:
         pass
-    finally:
-        match.quit_engines()
+    match.quit_engines()
 
 
 def main():
@@ -65,19 +64,21 @@ def main():
                     elo: float = sum(elo_range) / len(elo_range)
                     total_range: float = abs(elo_range[0] - elo_range[1]) / 2
                     logging.info(f"{score}: {elo:.2f} ± {total_range:.2f}")
-                    if Match.is_concordant(elo_range):
+                    if total_range < 100 and Match.is_concordant(elo_range):
+                        logging.warning("Finished, shutting down processes")
                         break
                 else:
                     logging.info(str(score))
+
+        [queue.put(None) for _ in range(cores)]
+        pool.close()
+        pool.join()
 
     # Quit.
     except KeyboardInterrupt:
         logging.warning("Keyboard interrupted")
     finally:
         write_result(engine_paths, score, MOVE_TIME)
-        [queue.put(None) for _ in range(cores)]
-        pool.close()
-        pool.join()
 
 
 if __name__ == "__main__":
