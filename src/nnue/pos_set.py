@@ -36,9 +36,14 @@ def to_features(input: List[int]) -> int:
 
 
 class PositionDataset(Dataset):
-    def __init__(self, file_name: str, lambda_: float = 1):
-        self.lines: List[str] = open(file_name, "r").readlines()[:-1]
+    def __init__(self, lines: List[str], lambda_: float):
+        self.lines: List[str] = lines
         self.lambda_: float = lambda_
+
+    @staticmethod
+    def from_file(file_name: str, lambda_: float):
+        lines: List[str] = open(file_name, "r").readlines()[:-1]
+        return PositionDataset(lines, lambda_)
 
     def __len__(self):
         return len(self.lines)

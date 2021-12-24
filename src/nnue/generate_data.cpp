@@ -19,7 +19,7 @@ using std::ostringstream;
 using std::string;
 using std::vector;
 
-constexpr uint16_t MAX_GAME_LENGTH = 96;
+constexpr uint16_t MAX_GAME_LENGTH = 256;
 
 constexpr float SEARCH_TIME = 0.01;
 
@@ -78,14 +78,23 @@ uint8_t write_game(Board *board, ofstream *file) {
     uint8_t size = gen_moves(board, moves);
     make_move(board, moves[RNG() % size]);
 
-    float result = 0;
+    float result;
+    vector<Hash> history = vector<Hash>();
     vector<string> lines = vector<string>();
-    while (board->move_count < MAX_GAME_LENGTH) {
+    while (1) {
         // Terminate by game-end.
         if (board->game_over()) {
             result = 1;
             break;
         }
+
+        // Terminate by repetition.
+        if (board->move_count >= MAX_GAME_LENGTH ||
+            std::find(history.begin(), history.end(), board->hash) != history.end()) {
+            result = 0;
+            break;
+        }
+        history.push_back(board->hash);
 
         Move move = start_search(board, SEARCH_TIME, true, 1);
         if (!move_exists(board, move)) {
@@ -134,21 +143,23 @@ int generate_data(int TARGET_NUM) {
     Board board = {};
     Card cards[CARD_NUM];
     for (int i = 0; i < CARD_NUM; ++i)
-        cards[i] = (Card)((i + 3) % CARD_NUM);
+        cards[i] = (Card)((i + 6) % CARD_NUM);
 
     clock_t start = clock();
     uint64_t count = 0;
-    //    while (count < TARGET_NUM) {
-    while (1) {
+    while (!TARGET_NUM || count < TARGET_NUM) {
         board = {};
         setup_cards(&board, cards);
         count += write_game(&board, &file);
 
         double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
-        //        double fraction = static_cast<double>(count) / TARGET_NUM;
-        //        std::cout << int(fraction * 1000) / 10.0 << "% ("
-        //                  << int(elapsed / fraction - elapsed) << "s)" << std::endl;
-        std::cout << count << " (" << int(elapsed) << "s)" << std::endl;
+        if (!TARGET_NUM) {
+            std::cout << count << " (" << int(elapsed) << "s)" << std::endl;
+        } else {
+            double fraction = static_cast<double>(count) / TARGET_NUM;
+            std::cout << int(fraction * 1000) / 10.0 << "% ("
+                      << int(elapsed / fraction - elapsed) << "s)" << std::endl;
+        }
     }
 
     file.close();

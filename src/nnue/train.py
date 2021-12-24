@@ -1,23 +1,21 @@
 import logging
-from math import atanh
 from time import time
+from random import shuffle
 from typing import List, Optional
 from os.path import exists
 from datetime import timedelta
 
 import torch
 import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
 from model import NNUE
 from torch import nn
 from pos_set import PositionDataset
-from quicktracer import trace
 from torch.utils.data import DataLoader
 
 EPOCHS: Optional[int] = None
 BATCH_SIZE: int = 4096
 
-MODEL_FILE: str = "models/model3.pth"
+MODEL_FILE: str = "models/model6.pth"
 LAST_MODEL_FILE: Optional[str] = None
 DATASET_FILE: str = "../../cmake-build-release/example.txt"
 
@@ -41,11 +39,20 @@ if __name__ == "__main__":
         logging.info("Starting from scratch.")
     logging.info(model)
 
-    dataset: PositionDataset = PositionDataset(DATASET_FILE, lambda_=0.9)
-    dataloader: DataLoader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_frac: float = 0.05
+    datalines: List[str] = open(DATASET_FILE, "r").readlines()[:-1]
+    shuffle(datalines)
+    dataset: PositionDataset = PositionDataset(
+        datalines[: -int(len(datalines) * test_frac)], lambda_=0.9
+    )
+    testset: PositionDataset = PositionDataset(
+        datalines[-int(len(datalines) * test_frac) :], lambda_=0.9
+    )
+    dataloader: DataLoader = DataLoader(dataset, batch_size=BATCH_SIZE)
+    testloader: DataLoader = DataLoader(testset, batch_size=BATCH_SIZE)
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.005)
+    optimizer = optim.Adam(model.parameters(), lr=0.003)
 
     # from torch_lr_finder import LRFinder
     # lr_finder = LRFinder(model, optimizer, criterion, device=device)
@@ -53,10 +60,6 @@ if __name__ == "__main__":
     # lr_finder.plot()
     # lr_finder.reset()
     # exit()
-
-    # scheduler = lr_scheduler.CyclicLR(
-    #     optimizer, 0.002, 1, step_size_up=64 * BATCH_SIZE
-    # )
 
     # Epoch loop.
     start_time: float = time()
@@ -78,38 +81,38 @@ if __name__ == "__main__":
 
                 # Backward.
                 loss = criterion(out, out_batch)
-                batch_losses.append(loss.item())
                 loss.backward()
 
-                # trace_sample_size: int = 100
-                # if len(batch_losses) >= trace_sample_size:
-                #     trace_value: float = sum(batch_losses[-trace_sample_size:]) / min(
-                #         trace_sample_size, len(batch_losses)
-                #     )
-                #     trace(trace_value)
-
                 optimizer.step()
+
+            # Test.
+            for in_batch, out_batch in iter(testloader):
+                in_batch, out_batch = in_batch.to(device), out_batch.to(device)
+
+                optimizer.zero_grad()
+
+                # Forward.
+                out = model(in_batch)
+
+                # Backward.
+                loss = criterion(out, out_batch)
+                batch_losses.append(loss.item())
         except KeyboardInterrupt:
             logging.info("Interrupted by keyboard.")
             break
-        # scheduler.step()
 
         # Logging.
         loss: float = sum(batch_losses[epoch_start_batch:]) / (
             len(batch_losses) - epoch_start_batch
         )
-        error: float = 250 * atanh(loss ** 0.5)
+        error: float = (890 * loss ** 1.5 + 859 * loss ** 0.5) / 10
+        lr: float = optimizer.param_groups[0]["lr"]
         time_display: float = (time() - start_time) * (
             (EPOCHS - epoch) / epoch if EPOCHS else 1
         )
+        time_str: str = str(timedelta(seconds=int(time_display)))
         logging.info(
-            "Epoch: {}, Loss: {}, Error: {}, LR: {}, Time: {}".format(
-                epoch,
-                round(loss, 6),
-                round(error, 2),
-                round(optimizer.param_groups[0]["lr"], 8),
-                timedelta(seconds=int(time_display)),
-            )
+            f"Epoch: {epoch:>3}, Loss: {loss:>8.6f}, Error: {error:>6.2f}, LR: {lr:>8.6f}, Time: {time_str}"
         )
 
         batch_losses.clear()
