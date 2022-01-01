@@ -19,7 +19,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 235;
+constexpr int MIN_EVAL = -100000, WINDOW = 117;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -506,7 +506,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
         nodes = 0;
         tb_hits = 0;
         clock_t start = clock();
-        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL;
+        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = WINDOW;
 
         // Iterative deepening.
         while (depth <= MAX_DEPTH) {
@@ -530,9 +530,13 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
             // Window.
-            if (value <= alpha || value >= beta) {
-                alpha = MIN_EVAL, beta = -MIN_EVAL;
+            delta += delta / 4;
+            if (value <= alpha) {
+                alpha = std::max(value - delta, MIN_EVAL);
+            } else if (value >= beta) {
+                beta = std::min(value + delta, -MIN_EVAL);
             } else {
+                delta = WINDOW;
                 if (depth >= 5) {
                     alpha = std::max(value - WINDOW, MIN_EVAL);
                     beta = std::min(value + WINDOW, -MIN_EVAL);
