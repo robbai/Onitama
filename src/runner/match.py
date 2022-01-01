@@ -1,5 +1,5 @@
 import logging
-from math import sqrt, log10
+from math import erf, sqrt, log10
 from typing import Set, List, Tuple, Optional
 from subprocess import PIPE, Popen
 
@@ -45,8 +45,13 @@ class Match:
         return elo_diff(_min), elo_diff(_max)
 
     @staticmethod
-    def is_concordant(elo_range: Tuple[float, float]) -> bool:
-        return elo_range[0] * elo_range[1] > 0
+    def get_los(dec_pair_score: Tuple[float, float]) -> bool:
+        return 0.5 * (
+            1
+            + erf(
+                (dec_pair_score[0] - dec_pair_score[1]) / sqrt(2 * sum(dec_pair_score))
+            )
+        )
 
     def quit_engines(self):
         for engine in self.engines:

@@ -26,17 +26,28 @@ def load_previous_result(engine_paths: List[str], move_time: float) -> List[floa
         if float(tokens[2]) != move_time:
             continue
         if tokens[0] == hashes[0] and tokens[1] == hashes[1]:
-            return [float(tokens[3]), float(tokens[4])]
+            return [float(tokens[3]), float(tokens[4])], [
+                float(tokens[5]),
+                float(tokens[6]),
+            ]
         elif tokens[0] == hashes[1] and tokens[1] == hashes[0]:
-            return [float(tokens[4]), float(tokens[3])]
-    return [0, 0]
+            return [float(tokens[4]), float(tokens[3])], [
+                float(tokens[6]),
+                float(tokens[5]),
+            ]
+    return [0, 0], [0, 0]
 
 
 def write_result(
-    engine_paths: List[str], score: List[float], move_time: float
+    engine_paths: List[str],
+    score: List[float],
+    dec_pair_score: List[float],
+    move_time: float,
 ) -> List[float]:
     hashes: List[str] = [sha256(engine_path) for engine_path in engine_paths]
-    new_line: str = "{},{},{},{},{}\n".format(*hashes, move_time, *score)
+    new_line: str = "{},{},{},{},{},{},{}\n".format(
+        *hashes, move_time, *score, *dec_pair_score
+    )
     lines: List[str] = open(HISTORY_FILE, "r").readlines()
     for i, line in enumerate(lines):
         tokens: List[str] = line.strip().split(",")

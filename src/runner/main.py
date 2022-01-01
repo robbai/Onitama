@@ -50,7 +50,7 @@ def main():
     pool: mp.Pool = mp.Pool(cores, process, (engine_paths, queue, score_queue))
 
     # Run matches.
-    score: List[float] = load_previous_result(engine_paths, MOVE_TIME)
+    score, dec_pair_score = load_previous_result(engine_paths, MOVE_TIME)
     try:
         for cards in cards_gen():
             queue.put(cards)
@@ -59,16 +59,24 @@ def main():
                 new_score: List[float] = score_queue.get()
                 score[0] += new_score[0]
                 score[1] += new_score[1]
+                if new_score[0] > new_score[1]:
+                    dec_pair_score[0] += 1
+                elif new_score[0] < new_score[1]:
+                    dec_pair_score[1] += 1
+
                 elo_range: Optional[Tuple[float, float]] = Match.get_elo_range(score)
                 if elo_range:
                     elo: float = sum(elo_range) / len(elo_range)
                     total_range: float = abs(elo_range[0] - elo_range[1]) / 2
-                    logging.info(f"{score}: {elo:.2f} ± {total_range:.2f}")
-                    if total_range < 100 and Match.is_concordant(elo_range):
+                    los: float = Match.get_los(dec_pair_score)
+                    logging.info(
+                        f"{score}, {dec_pair_score}: {los:.2%} ({elo:.2f} ± {total_range:.2f})"
+                    )
+                    if max(los, 1 - los) > 0.95:
                         logging.warning("Finished, shutting down processes")
                         break
                 else:
-                    logging.info(str(score))
+                    logging.info(f"{score}, {dec_pair_score}")
 
         [queue.put(None) for _ in range(cores)]
         pool.close()
@@ -78,7 +86,7 @@ def main():
     except KeyboardInterrupt:
         logging.warning("Keyboard interrupted")
     finally:
-        write_result(engine_paths, score, MOVE_TIME)
+        write_result(engine_paths, score, dec_pair_score, MOVE_TIME)
 
 
 if __name__ == "__main__":
