@@ -46,11 +46,17 @@ class Match:
 
     @staticmethod
     def get_los(dec_pair_score: Tuple[float, float]) -> bool:
-        return 0.5 * (
-            1
-            + erf(
-                (dec_pair_score[0] - dec_pair_score[1]) / sqrt(2 * sum(dec_pair_score))
+        return (
+            0.5
+            * (
+                1
+                + erf(
+                    (dec_pair_score[0] - dec_pair_score[1])
+                    / sqrt(2 * sum(dec_pair_score))
+                )
             )
+            if any(dec_pair_score)
+            else 0.5
         )
 
     def quit_engines(self):

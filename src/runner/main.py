@@ -64,19 +64,19 @@ def main():
                 elif new_score[0] < new_score[1]:
                     dec_pair_score[1] += 1
 
+                los: float = Match.get_los(dec_pair_score)
+                info: str = f"{score}, {dec_pair_score}: {los:.2%}"
                 elo_range: Optional[Tuple[float, float]] = Match.get_elo_range(score)
                 if elo_range:
                     elo: float = sum(elo_range) / len(elo_range)
                     total_range: float = abs(elo_range[0] - elo_range[1]) / 2
-                    los: float = Match.get_los(dec_pair_score)
-                    logging.info(
-                        f"{score}, {dec_pair_score}: {los:.2%} ({elo:.2f} ± {total_range:.2f})"
-                    )
+
+                    logging.info(info + f" ({elo:.2f} ± {total_range:.2f})")
                     if max(los, 1 - los) > 0.95:
                         logging.warning("Finished, shutting down processes")
                         break
                 else:
-                    logging.info(f"{score}, {dec_pair_score}")
+                    logging.info(info)
 
         [queue.put(None) for _ in range(cores)]
         pool.close()
