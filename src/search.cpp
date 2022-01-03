@@ -30,13 +30,10 @@ enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
-// TODO(robbai) Tune.
 namespace ProbCut {
-    const int D = 8;
-    const int DP = 4;
-    const float a = 1.5007311;
-    const float b = 0.64424325;
-    const int T_sigma = 800;
+    const int D = 5;
+    const float a = 0.804429;
+    const int T_sigma = 1369;
 }  // namespace ProbCut
 
 void init_search() {
@@ -170,14 +167,12 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
     // ProbCut.
     if (!pv_node && depth == ProbCut::D) {
-        int bound = (beta - ProbCut::b + ProbCut::T_sigma) / ProbCut::a;
-        if (!is_mate_value(beta) &&
-            search(board, ProbCut::DP, bound - 1, bound, ply, false) >= bound)
+        int bound = (beta + ProbCut::T_sigma) / ProbCut::a;
+        if (!is_mate_value(beta) && q_search(board, bound - 1, bound, ply) >= bound)
             return beta;
 
-        bound = (alpha - ProbCut::b - ProbCut::T_sigma) / ProbCut::a;
-        if (!is_mate_value(alpha) &&
-            search(board, ProbCut::DP, bound, bound + 1, ply, false) <= bound)
+        bound = (alpha - ProbCut::T_sigma) / ProbCut::a;
+        if (!is_mate_value(alpha) && q_search(board, bound, bound + 1, ply) <= bound)
             return alpha;
     }
 
