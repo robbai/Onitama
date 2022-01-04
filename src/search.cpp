@@ -27,6 +27,7 @@ uint64_t tb_hits = 0;
 uint8_t root_size = 0;
 
 enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
+enum QStage : uint8_t { Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
@@ -382,23 +383,31 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
         return alpha;
 
     Move *moves = move_lists[ply];
-    uint8_t size =
-            gen_moves(board, moves,
-                      win_threat ? FULL_BITBOARD : board->pieces[!board->turn][STUDENT]);
+    uint8_t size;
+    for (uint8_t stage = Q_CAPTURE; stage <= (win_threat ? Q_ALL : Q_CAPTURE); ++stage) {
+        switch (stage) {
+            case Q_CAPTURE:
+                size = gen_moves(board, moves, board->pieces[!board->turn][STUDENT]);
+                break;
+            default:
+                size = gen_moves(board, moves, ~board->pieces[!board->turn][STUDENT]);
+                break;
+        }
 
-    for (uint8_t i = 0; i < size; ++i) {
-        const Move move = moves[i];
-        make_move(board, move);
-        value = -q_search(board, -beta, -alpha, ply + 1);
-        undo_move(board, move);
+        for (uint8_t i = 0; i < size; ++i) {
+            const Move move = moves[i];
+            make_move(board, move);
+            value = -q_search(board, -beta, -alpha, ply + 1);
+            undo_move(board, move);
 
-        if (stop)
-            return 0;
+            if (stop)
+                return 0;
 
-        if (value >= beta)
-            return beta;
-        if (value > alpha)
-            alpha = value;
+            if (value >= beta)
+                return beta;
+            if (value > alpha)
+                alpha = value;
+        }
     }
 
     return alpha;
