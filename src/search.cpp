@@ -393,13 +393,16 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
         switch (stage) {
             case Q_RECAPTURE:
                 size = gen_moves(board, moves, recapture);
+                sort_moves(board, moves, size, true);
                 break;
             case Q_CAPTURE:
                 size = gen_moves(board, moves,
                                  board->pieces[!board->turn][STUDENT] & ~recapture);
+                sort_moves(board, moves, size, true);
                 break;
             default:
                 size = gen_moves(board, moves, ~board->pieces[!board->turn][STUDENT]);
+                sort_moves(board, moves, size, false);
                 break;
         }
 
