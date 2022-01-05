@@ -27,7 +27,7 @@ uint64_t tb_hits = 0;
 uint8_t root_size = 0;
 
 enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
-enum QStage : uint8_t { Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
+enum QStage : uint8_t { Q_RECAPTURE, Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
@@ -81,7 +81,8 @@ bool is_mate_value(int value) {
     return value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
-int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool check_tb) {
+int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move last_move,
+                   bool check_tb) {
     if (stop)
         return 0;
 
@@ -142,7 +143,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
     // Leaf.
     if (depth == 0)
-        return q_search(board, alpha, beta, ply);
+        return q_search(board, alpha, beta, ply, last_move);
     ++nodes;
 
     // Probe TT.
@@ -273,22 +274,22 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                                now_check_tb);
+                                move, now_check_tb);
             } else {
                 // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                now_check_tb);
+                                move, now_check_tb);
 
                 // Null window.
                 if (value > alpha && reduction > 0) {
-                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
+                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1, move,
                                     now_check_tb);
                 }
 
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, now_check_tb);
+                                    -beta, -alpha, ply + 1, move, now_check_tb);
                 }
             }
 
@@ -351,7 +352,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     return best_value;
 }
 
-int Thread::q_search(Board *board, int alpha, int beta, int ply) {
+int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move) {
     if (stop)
         return 0;
 
@@ -382,12 +383,19 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply) {
     if (ply >= MAX_DEPTH)
         return alpha;
 
+    Bitboard recapture = last_move ? (1u << MoveBits::to(last_move)) : 0;
+
     Move *moves = move_lists[ply];
     uint8_t size;
-    for (uint8_t stage = Q_CAPTURE; stage <= (win_threat ? Q_ALL : Q_CAPTURE); ++stage) {
+    for (uint8_t stage = Q_RECAPTURE; stage <= (win_threat ? Q_ALL : Q_CAPTURE);
+         ++stage) {
         switch (stage) {
+            case Q_RECAPTURE:
+                size = gen_moves(board, moves, recapture);
+                break;
             case Q_CAPTURE:
-                size = gen_moves(board, moves, board->pieces[!board->turn][STUDENT]);
+                size = gen_moves(board, moves,
+                                 board->pieces[!board->turn][STUDENT] & ~recapture);
                 break;
             default:
                 size = gen_moves(board, moves, ~board->pieces[!board->turn][STUDENT]);
@@ -483,7 +491,7 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
 
         auto search = [th, board, depth, alpha, beta](Thread *thread) {
             Board thread_board = board->copy();
-            thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta, 0, false);
+            thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta);
         };
         std::thread helper = std::thread(search, thread);
         helpers->push_back(std::move(helper));
@@ -523,10 +531,10 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             int value;
 
             if (depth == 1) {
-                value = threads[0].search(board, depth, alpha, beta, 0, false);
+                value = threads[0].search(board, depth, alpha, beta);
             } else {
                 start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
-                value = threads[0].search(board, depth, alpha, beta, 0, false);
+                value = threads[0].search(board, depth, alpha, beta);
                 end_helpers(threads, &helpers, num_threads);
             }
 
