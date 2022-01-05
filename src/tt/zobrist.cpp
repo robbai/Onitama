@@ -11,10 +11,9 @@ namespace Zobrist {
  */
 class XRS_64 {
  public:
-    XRS_64() {
-        seed = 6394358446697381921;
+    XRS_64() : seed(6394358446697381921) {
     }
-    uint64_t generate(void) {
+    uint64_t generate() {
         seed ^= seed >> 12;
         seed ^= seed << 25;
         seed ^= seed >> 27;
@@ -27,17 +26,13 @@ class XRS_64 {
 
 void init_zobrist() {
     XRS_64 rng = XRS_64();
-    for (int i = 0; i < PLAYERS_NUM; ++i) {
-        for (int j = 0; j < PIECE_TYPES_NUM; ++j) {
-            for (int k = 0; k < SQUARE_NUM; ++k)
-                Zobrist::PIECES[i][j][k] = rng.generate();
-        }
-    }
-    for (int i = 0; i < CARD_NUM; ++i) {
-        for (int j = 0; j < (PLAYERS_NUM + 1); ++j) {
-            Zobrist::CARDS[i][j] = rng.generate();
-        }
-    }
+    for (auto &piece_types : Zobrist::PIECES)
+        for (auto &squares : piece_types)
+            for (Hash &hash : squares)
+                hash = rng.generate();
+    for (auto &players : Zobrist::CARDS)
+        for (Hash &hash : players)
+            hash = rng.generate();
     Zobrist::TURN = rng.generate();
 }
 
@@ -49,7 +44,7 @@ void set_hash(Board *board) {
         for (int piece_type = 0; piece_type < PIECE_TYPES_NUM; ++piece_type) {
             Bitboard pieces = board->pieces[player][piece_type];
             while (pieces) {
-                uint8_t sq = __builtin_popcount(pieces);
+                Square sq = __builtin_popcount(pieces);
                 board->hash ^= Zobrist::PIECES[player][piece_type][sq];
                 pieces ^= (1u << sq);
             }

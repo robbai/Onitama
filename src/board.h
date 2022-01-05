@@ -22,9 +22,8 @@ class Board {
     bool game_over();
     Board copy();
     bool operator==(const Board &other);
-    bool winning_move(Move move);
     bool has_winning_move(bool turn);
-    bool has_winning_move() {
+    inline bool has_winning_move() {
         return this->has_winning_move(this->turn);
     }
 };

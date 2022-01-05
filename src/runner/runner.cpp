@@ -93,9 +93,9 @@ int use_runner() {
         } else if (command == "moves") {
             Move moves[MAX_MOVES];
             uint8_t size = gen_moves(&board, moves);
-            for (uint8_t i = 0; i < size; ++i) {
+            for (int i = 0; i < size; ++i) {
                 const Move move = moves[i];
-                std::cout << int(i + 1) << ": " << move_string(&board, move) << std::endl;
+                std::cout << i << ": " << move_string(&board, move) << std::endl;
             }
         } else if (command == "print") {
             std::cout << pretty_board(&board) << std::endl;

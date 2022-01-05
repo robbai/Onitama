@@ -26,8 +26,8 @@ class Client {
     Turn index;
     bool end_loop = false;
     WebSocket *ws;
-    void send(string message);
-    void handle_json(string json);
+    void send(const string &message);
+    void handle_json(const string &json);
     void receive_create(rapidjson::Document &doc);
     void receive_join(rapidjson::Document &doc);
     void receive_state(rapidjson::Document &doc);

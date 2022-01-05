@@ -1,10 +1,8 @@
 #include "client.h"
 
 #include <algorithm>
-#include <string>
 #include <sstream>
 
-#include "easywsclient.hpp"
 #include "util.h"
 #include "search.h"
 #include "tb/tb_probe.h"
@@ -18,16 +16,16 @@ const string SERVER_URL = "ws://litama.herokuapp.com";
 const string USERNAME =
         "robbai" + (GIT_BRANCH[0] == 0 ? "" : "-" + std::string(GIT_BRANCH));
 
-Turn parse_colour(const string colour) {
+Turn parse_colour(const string &colour) {
     return (Turn)(colour == "red");
 }
 
-void Client::send(string message) {
+void Client::send(const string &message) {
     std::cout << "< " << message << std::endl;
     ws->send(message);
 }
 
-void Client::handle_json(string json) {
+void Client::handle_json(const string &json) {
     // Parse JSON.
     rapidjson::Document doc;
     doc.Parse(json.c_str());
@@ -124,9 +122,9 @@ void Client::receive_state(rapidjson::Document &doc) {
         // Translate move and send.
         string move_message = move_string(&new_board, move);
         move_message = to_lower(move_message);
-        for (int i = 0; i < move_message.length(); ++i) {
-            if (move_message[i] == ':') {
-                move_message[i] = ' ';
+        for (char &c : move_message) {
+            if (c == ':') {
+                c = ' ';
                 break;
             }
         }
@@ -139,11 +137,9 @@ void Client::receive_state(rapidjson::Document &doc) {
 }
 
 void Client::receive_move(rapidjson::Document &doc) {
-    return;
 }
 
 void Client::receive_spectate(rapidjson::Document &doc) {
-    return;
 }
 
 int Client::loop() {

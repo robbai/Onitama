@@ -36,7 +36,7 @@ string pretty_board(Board *board) {
             } else {
                 character = '.';
             }
-            str += (!file ? std::to_string(rank + 1) + " | " : " | ");
+            str += (!file ? std::to_string(rank + 1) : "") + " | ";
             str += character;
         }
         str += " | \n  +---+---+---+---+---+\n";
@@ -57,8 +57,8 @@ string pretty_board(Board *board) {
 }
 
 string move_string(Board *board, Move move) {
-    int from = MoveBits::from(move);
-    int to = MoveBits::to(move);
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
     return CARD_NAMES[board->cards[board->turn][MoveBits::card_index(move)]] + ":" +
            SQUARE_NAMES[from] + SQUARE_NAMES[to];
 }

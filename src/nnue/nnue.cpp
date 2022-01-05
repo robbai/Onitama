@@ -17,7 +17,7 @@ void populate_input(Board *board) {
     Bitboard pieces = (board->pieces[0][0] | board->pieces[0][1] | board->pieces[1][0] |
                        board->pieces[1][1]);
     while (pieces) {
-        uint8_t square = __builtin_ctz(pieces);
+        Square square = __builtin_ctz(pieces);
         Bitboard mask = 1u << square;
         bool player =
                 mask & (board->pieces[!board->turn][0] | board->pieces[!board->turn][1]);
@@ -66,6 +66,5 @@ float nnue(Board *board) {
 
 int evaluate_nnue(Board *board) {
     float value = nnue(board);
-    return 890 * (value * value * value) + 859 * value;
-    //    return 2500 * value;
+    return 859 * value + 890 * (value * value * value);
 }

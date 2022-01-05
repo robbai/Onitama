@@ -433,8 +433,8 @@ int to_centi(int evaluation) {
  * Approximates the change in evaluation from a move.
  */
 int evaluate_move(Board *board, Move move) {
-    uint8_t from = MoveBits::from(move);
-    uint8_t to = MoveBits::to(move);
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
     if (board->turn) {
         from = (SQUARE_NUM - 1 - from);
         to = (SQUARE_NUM - 1 - to);

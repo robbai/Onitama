@@ -11,7 +11,7 @@ uint8_t gen_moves(Board *board, Move *moves, Bitboard targets) {
             board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER];
     targets &= ~pieces;
     while (pieces) {
-        uint8_t from = __builtin_ctz(pieces);
+        Square from = __builtin_ctz(pieces);
         Bitboard mask_1 = (1u << from);
 
         // Iterate through cards.
@@ -29,7 +29,7 @@ uint8_t gen_moves(Board *board, Move *moves, Bitboard targets) {
                     from, card_index, mask_1 & board->pieces[board->turn][MASTER],
                     lower_swap);
             while (squares) {
-                uint8_t to = __builtin_ctz(squares);
+                Square to = __builtin_ctz(squares);
                 Bitboard mask_2 = (1u << to);
 
                 moves[total] = MoveBits::finish_create_move(
@@ -54,7 +54,7 @@ uint8_t count_moves(Board *board) {
             board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER];
     Bitboard targets = ~pieces;
     while (pieces) {
-        uint8_t from = __builtin_ctz(pieces);
+        Square from = __builtin_ctz(pieces);
 
         // Iterate through cards.
         for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
@@ -73,7 +73,7 @@ uint8_t count_moves(Board *board) {
 }
 
 bool move_exists(Board *board, Move move) {
-    uint8_t from = MoveBits::from(move);
+    Square from = MoveBits::from(move);
     bool piece_type = MoveBits::piece_type(move);
 
     // No piece to start with.
@@ -81,7 +81,7 @@ bool move_exists(Board *board, Move move) {
         return false;
 
     // Already a friendly on that destination.
-    uint8_t to = MoveBits::to(move);
+    Square to = MoveBits::to(move);
     if ((1u << to) &
         (board->pieces[board->turn][STUDENT] | board->pieces[board->turn][MASTER]))
         return false;

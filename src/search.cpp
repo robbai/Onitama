@@ -2,12 +2,9 @@
 #include <ctime>
 #include <string>
 #include <cmath>
-#include <utility>
-#include <cstring>
-#include <cassert>
 #include <thread>
 #include <vector>
-#include <chrono>
+#include <utility>
 
 #include "board.h"
 #include "make_move.h"
@@ -250,8 +247,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
                 if (depth > 2) {
                     reduction = LMR_TABLE[depth][move_num];
 
-                    uint8_t from = MoveBits::from(move);
-                    uint8_t to = MoveBits::to(move);
+                    Square from = MoveBits::from(move);
+                    Square to = MoveBits::to(move);
                     bool piece_type = MoveBits::piece_type(move);
                     if (history[board->turn][from][to][piece_type] > 30)
                         reduction -= 1;
@@ -304,8 +301,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
                     if (value >= beta) {
                         if (!MoveBits::capture(move)) {
                             // History heuristic.
-                            uint8_t from = MoveBits::from(move);
-                            uint8_t to = MoveBits::to(move);
+                            Square from = MoveBits::from(move);
+                            Square to = MoveBits::to(move);
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
 
@@ -427,32 +424,32 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
 void Thread::reset() {
     // History.
-    for (uint8_t i = 0; i < PLAYERS_NUM; ++i)
-        for (uint8_t j = 0; j < SQUARE_NUM; ++j)
-            for (uint8_t k = 0; k < SQUARE_NUM; ++k)
-                for (uint8_t l = 0; l < PIECE_TYPES_NUM; ++l)
-                    history[i][j][k][l] = 0;
+    for (auto &sq1 : history)
+        for (auto &sq2 : sq1)
+            for (auto &piece_type : sq2)
+                for (uint16_t &hist : piece_type)
+                    hist = 0;
 
     // Killers.
-    for (uint8_t d = 0; d < MAX_DEPTH; ++d)
-        for (uint8_t k = 0; k < Thread::KILLER_NUM; ++k)
-            killers[d][k] = 0;
+    for (auto &killer : killers)
+        for (Move &move : killer)
+            move = 0;
 
     // Counter-cards.
-    for (uint8_t i = 0; i < CARD_NUM; ++i)
-        for (uint8_t j = 0; j < CARD_NUM; ++j)
-            for (uint8_t k = 0; k < CARD_NUM; ++k)
-                counters[i][j][k] = CARD_NUM;
+    for (auto &card1 : counters)
+        for (auto &card2 : card1)
+            for (auto &card3 : card2)
+                card3 = CARD_NUM;
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                         bool tt_move_exists, Move last_move) {
-    uint8_t recapture_sq = last_move ? MoveBits::to(last_move) : SQUARE_NUM;
+    Square recapture_sq = last_move ? MoveBits::to(last_move) : SQUARE_NUM;
 
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
-        uint8_t to = MoveBits::to(move);
+        Square to = MoveBits::to(move);
 
         if (captures) {
             sort_values[i] = evaluate_move(board, move);
@@ -462,7 +459,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         }
 
         // History heuristic.
-        uint8_t from = MoveBits::from(move);
+        Square from = MoveBits::from(move);
         bool piece_type = MoveBits::piece_type(move);
         sort_values[i] = history[board->turn][from][to][piece_type];
 

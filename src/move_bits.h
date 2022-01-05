@@ -5,11 +5,11 @@
 #include "util.h"
 
 namespace MoveBits {
-    constexpr uint8_t from(Move move) {
+    constexpr Square from(Move move) {
         return move & 31;
     }
 
-    constexpr uint8_t to(Move move) {
+    constexpr Square to(Move move) {
         return (move >> 5) & 31;
     }
 
@@ -33,12 +33,12 @@ namespace MoveBits {
         return move & 8192;
     }
 
-    constexpr Move half_create_move(uint8_t from, bool card_index, bool piece_type,
+    constexpr Move half_create_move(Square from, bool card_index, bool piece_type,
                                     bool lower_swap) {
         return from | (card_index << 10) | (piece_type << 12) | (lower_swap << 13);
     }
 
-    constexpr Move finish_create_move(Move move, uint8_t to, bool capture) {
+    constexpr Move finish_create_move(Move move, Square to, bool capture) {
         return move | (to << 5) | (capture << 11);
     }
 }  // namespace MoveBits

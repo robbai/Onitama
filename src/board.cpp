@@ -2,7 +2,6 @@
 
 #include <cstring>
 
-#include "move_bits.h"
 #include "move_tables.h"
 
 // This function only checks for whether the non-moving player has won.
@@ -34,31 +33,24 @@ bool Board::operator==(const Board &other) {
     return this->side_card == other.side_card && this->turn == other.turn;
 }
 
-bool Board::winning_move(Move move) {
-    Bitboard to = (1u << MoveBits::to(move));
-    return (this->pieces[!this->turn][MASTER] & to) ||
-           (MoveBits::piece_type(move) && (to & HOMES[!this->turn]));
-}
-
 bool Board::has_winning_move(bool turn) {
-    uint8_t opponent_sq = (turn ? 2 : 22);
+    // Stream.
+    Square opponent_sq = (turn ? 2 : 22);
     if (!(HOMES[!turn] & this->pieces[turn][STUDENT])) {
-        for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-            if ((MOVE_TABLES[(this->cards[turn][card_index] * SQUARE_NUM + opponent_sq) *
-                                     PLAYERS_NUM +
-                             !turn]) &
-                this->pieces[turn][MASTER])
-                return true;
-        }
-    }
-    opponent_sq = __builtin_ctz(this->pieces[!turn][MASTER]);
-    Bitboard our_pieces = this->pieces[turn][STUDENT] | this->pieces[turn][MASTER];
-    for (int card_index = 0; card_index < CARDS_EACH_NUM; ++card_index) {
-        if ((MOVE_TABLES[(this->cards[turn][card_index] * SQUARE_NUM + opponent_sq) *
-                                 PLAYERS_NUM +
+        if ((MOVE_TABLES[(this->cards[turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+                         !turn] |
+             MOVE_TABLES[(this->cards[turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
                          !turn]) &
-            our_pieces)
+            this->pieces[turn][MASTER])
             return true;
     }
-    return false;
+
+    // Stone.
+    opponent_sq = __builtin_ctz(this->pieces[!turn][MASTER]);
+    Bitboard our_pieces = this->pieces[turn][STUDENT] | this->pieces[turn][MASTER];
+    return (MOVE_TABLES[(this->cards[turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+                        !turn] |
+            MOVE_TABLES[(this->cards[turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+                        !turn]) &
+           our_pieces;
 }

@@ -6,8 +6,8 @@
 
 void make_move(Board *board, Move move) {
     Bitboard xor_board = MoveBits::xor_board(move);
-    uint8_t from = MoveBits::from(move);
-    uint8_t to = MoveBits::to(move);
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
 
     // Move the piece.
     bool piece_type = MoveBits::piece_type(move);
@@ -43,8 +43,8 @@ void make_move(Board *board, Move move) {
 
 void undo_move(Board *board, Move move) {
     Bitboard xor_board = MoveBits::xor_board(move);
-    uint8_t from = MoveBits::from(move);
-    uint8_t to = MoveBits::to(move);
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
     bool piece_type = MoveBits::piece_type(move);
 
     // Swap the turn.

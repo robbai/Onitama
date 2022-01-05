@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <iostream>
 #include <cassert>
-#include <ctime>
 #include <string>
 
 #include "../move_tables.h"
@@ -267,13 +266,13 @@ Index get_index(Position *pos) {
         // Students.
         if (Tablebase::STUDENT_MEN) {
             bitboard = ((pos->pieces[WHITE] | pos->pieces[BLACK]) ^ pos->masters);
-            uint8_t prev_sq = SQUARE_NUM;
+            Square prev_sq = SQUARE_NUM;
             for (uint8_t men = 0; men < Tablebase::STUDENT_MEN; ++men) {
                 if (!bitboard) {
                     index = (index * (SQUARE_NUM + 1 - men) + SQUARE_NUM - men) * 2;
                     continue;
                 }
-                uint8_t sq = (31 - __builtin_clz(bitboard));
+                Square sq = (31 - __builtin_clz(bitboard));
                 index = (index * (SQUARE_NUM + 1 - men) - sq + prev_sq - 1);
                 index = (index * 2 + ((pos->pieces[WHITE] & (1u << sq)) != 0));
                 bitboard ^= (1u << sq);
@@ -296,7 +295,7 @@ Index get_index(Position *pos) {
                     index = (index * (SQUARE_NUM + 1 - men) + SQUARE_NUM - men) * 2;
                     continue;
                 }
-                uint8_t sq = __builtin_ctz(bitboard);
+                Square sq = __builtin_ctz(bitboard);
                 index = (index * (SQUARE_NUM + 1 - men) + sq - prev_sq - 1);
                 index = (index * 2 + ((pos->pieces[BLACK] & (1u << sq)) != 0));
                 bitboard ^= (1u << sq);
@@ -331,8 +330,8 @@ Position from_index(Index index) {
     // Cards.
     pos.cards = 0;
     uint64_t cards = 0;
-    for (uint8_t i = 0; i < 5; ++i)
-        cards |= 1ull << Tablebase::CARD_LIST[i];
+    for (auto &card : Tablebase::CARD_LIST)
+        cards |= 1ull << card;
     uint8_t setup_index = SETUPS_INVERSE[index % SETUPS_NUM];
     while (cards) {
         uint8_t card = 63 - __builtin_clzll(cards);
@@ -357,10 +356,10 @@ Position from_index(Index index) {
 
     // Students.
     if (Tablebase::STUDENT_MEN) {
-        uint8_t furthest_sq = 0;
+        Square furthest_sq = 0;
         for (int8_t men = (Tablebase::STUDENT_MEN - 1); men >= 0; --men) {
             uint8_t student = (index % (2 * (SQUARE_NUM + 1 - men)));
-            uint8_t sq = (student / 2);
+            Square sq = (student / 2);
             bool player = (student % 2);
             if (sq != SQUARE_NUM - men) {
                 if (men)
@@ -412,7 +411,7 @@ uint8_t gen_forward(Position *pos, Position *forward) {
     Bitboard pieces = pos->pieces[pos->turn];
     Bitboard targets = ~pieces;
     while (pieces) {
-        uint8_t from = __builtin_ctz(pieces);
+        Square from = __builtin_ctz(pieces);
         Bitboard from_mask = (1u << from);
         uint64_t cards = pos->cards;
         if (pos->turn)
@@ -469,7 +468,7 @@ uint8_t gen_backward(Position *pos, Position *backward) {
         pieces &= ~(pos->turn ? 4u : 4194304u);
 
     while (pieces) {
-        uint8_t from = __builtin_ctz(pieces);
+        Square from = __builtin_ctz(pieces);
         Bitboard from_mask = (1u << from);
 
         uint64_t cards = pos->cards;

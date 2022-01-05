@@ -11,7 +11,7 @@ bool on_board(int file, int rank) {
 }
 
 void init_move_tables() {
-    // Create a list of "DELTAS", that represent each of the cards' moves from
+    // Create a list of deltas, that represent each of the cards' moves from
     // origin.
     const vector<vector<vector<int>>> DELTAS = {
             {{-1, -1}, {1, 1}, {2, 0}},            // Rabbit.
@@ -33,7 +33,7 @@ void init_move_tables() {
     };
 
     // Create a look-up table relating each card to a square.
-    for (int square = 0; square < SQUARE_NUM; ++square) {
+    for (Square square = 0; square < SQUARE_NUM; ++square) {
         int file = square % BOARD_LENGTH, rank = square / BOARD_LENGTH;
         for (int card = 0; card < CARD_NUM; ++card) {
             int index = (card * SQUARE_NUM + square) * PLAYERS_NUM;
