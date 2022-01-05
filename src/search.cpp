@@ -215,7 +215,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
                 size = gen_moves(board, moves, targets);
 
                 // Sort moves.
-                sort_moves(board, moves, size, stage == CAPTURE, searched_tt_move);
+                sort_moves(board, moves, size, stage == CAPTURE, searched_tt_move,
+                           last_move);
 
                 if (stage == QUIET && depth < 7)
                     static_value = evaluate(board, false);
@@ -442,19 +443,23 @@ void Thread::reset() {
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
-                        bool tt_move_exists) {
+                        bool tt_move_exists, Move last_move) {
+    uint8_t recapture_sq = last_move ? MoveBits::to(last_move) : SQUARE_NUM;
+
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
+        uint8_t to = MoveBits::to(move);
 
         if (captures) {
             sort_values[i] = evaluate_move(board, move);
+            if (to == recapture_sq)
+                sort_values[i] += 100;
             continue;
         }
 
         // History heuristic.
         uint8_t from = MoveBits::from(move);
-        uint8_t to = MoveBits::to(move);
         bool piece_type = MoveBits::piece_type(move);
         sort_values[i] = history[board->turn][from][to][piece_type];
 
