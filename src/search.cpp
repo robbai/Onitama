@@ -556,7 +556,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
                 beta = std::min(value + delta, -MIN_EVAL);
             } else {
                 delta = WINDOW;
-                if (depth >= 5) {
+                if (depth >= 6) {
                     alpha = std::max(value - WINDOW, MIN_EVAL);
                     beta = std::min(value + WINDOW, -MIN_EVAL);
                 }
