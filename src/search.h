@@ -22,6 +22,7 @@ class Thread {
     Move killers[MAX_DEPTH][KILLER_NUM];
     int sort_values[MAX_MOVES] = {};
     Hash hash_line[MAX_DEPTH];
+    int pv_ply[MAX_DEPTH];
 
     void sort_moves(Board *board, Move *moves, uint8_t size, bool captures = false,
                     bool tt_move_exists = false, Move last_move = 0);

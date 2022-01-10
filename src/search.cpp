@@ -86,6 +86,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
     int alpha_original = alpha;
     bool root = !ply;
     bool pv_node = beta - alpha != 1;
+    pv_ply[ply] = pv_node;
 
     // Terminal.
     if (board->game_over()) {
@@ -115,15 +116,10 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
     }
 
     // Score repetitions in search as a draw.
-    if (beta > 0) {
-        for (uint8_t p = (ply & 1); p < ply; p += 2) {
-            if (this->hash_line[p] == board->hash) {
-                beta = 0;
-                if (alpha >= beta) {
-                    ++nodes;
-                    return beta;
-                }
-            }
+    for (uint8_t p = (ply & 1); p < ply; p += 2) {
+        if (this->hash_line[p] == board->hash && !pv_ply[p]) {
+            ++nodes;
+            return 0;
         }
     }
     this->hash_line[ply] = board->hash;
