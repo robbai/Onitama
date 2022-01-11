@@ -29,6 +29,9 @@ enum QStage : uint8_t { Q_RECAPTURE, Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
+Param PARAMS[] = {};
+const int PARAM_NUM = sizeof(PARAMS) / sizeof(*PARAMS);
+
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++)
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)

@@ -40,9 +40,6 @@ add_executable(
         src/search.h
         src/perft.cpp
         src/perft.h
-        lib/easywsclient/easywsclient.cpp
-        src/client.cpp
-        src/client.h
         src/tb/tb_gen.cpp
         src/tb/tb_gen.h
         src/tb/tb_probe.cpp
@@ -55,13 +52,13 @@ add_executable(
         src/tt/zobrist.h
         src/evaluate.cpp
         src/evaluate.h
-        src/runner/runner.cpp
-        src/runner/runner.h
         src/nnue/layer.h
         src/nnue/nnue.cpp
         src/nnue/nnue.h
         src/nnue/network.cpp
         src/nnue/network.h
+        src/tune.cpp
+        src/tune.h
 )
 
 set(EXTERNAL_LIB_HEADERS lib/easywsclient lib/rapidjson/include)
