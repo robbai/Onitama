@@ -78,8 +78,8 @@ bool is_mate_value(int value) {
     return value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
-int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move last_move,
-                   bool check_tb) {
+int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool cut_node,
+                   Move last_move, bool check_tb) {
     if (stop)
         return 0;
 
@@ -252,6 +252,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
                     if (!pv_node)
                         reduction += 1;
 
+                    if (cut_node)
+                        reduction += 1;
+
                     if (reduction < 0)
                         reduction = 0;
                 }
@@ -268,22 +271,22 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, Move l
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                                move, now_check_tb);
+                                false, move, now_check_tb);
             } else {
                 // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                move, now_check_tb);
+                                true, move, now_check_tb);
 
                 // Null window.
                 if (value > alpha && reduction > 0) {
-                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1, move,
-                                    now_check_tb);
+                    value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
+                                    !cut_node, move, now_check_tb);
                 }
 
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, move, now_check_tb);
+                                    -beta, -alpha, ply + 1, false, move, now_check_tb);
                 }
             }
 

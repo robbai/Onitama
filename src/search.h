@@ -36,7 +36,7 @@ class Thread {
 
     void reset();
     int search(Board *board, int depth, int alpha, int beta, int ply = 0,
-               Move last_move = 0, bool check_tb = false);
+               bool cut_node = false, Move last_move = 0, bool check_tb = false);
 };
 
 #endif  // ONITAMA_SEARCH_H
