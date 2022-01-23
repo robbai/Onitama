@@ -17,6 +17,8 @@
 #include "evaluate.h"
 #include "move_tables.h"
 
+uint8_t LIMITED_DEPTH = 1;
+
 constexpr int MIN_EVAL = -100000, MIN_WINDOW = 20;
 
 uint64_t nodes = 0;
@@ -388,7 +390,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             int next_pv_dist = pv_dist + move_index;
 
             int value;
-            bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
+            bool now_check_tb = GENERATED_TB && (root || MoveBits::capture(move));
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
                                 false, move, now_check_tb, next_pv_dist);
@@ -712,83 +714,74 @@ std::string to_value_str(Board *board, int value) {
     return value_str;
 }
 
-Move start_search(Board *board, float search_time, bool silent, uint8_t num_threads) {
+Move start_search(Board *board, bool silent, uint8_t num_threads) {
     Move best_move;
 
-    auto search = [&board, silent, num_threads, &best_move](Thread *threads) {
-        // Setup threads.
-        std::vector<std::thread> helpers;
-        for (uint8_t th = 0; th < num_threads; ++th) {
-            Thread *thread = &threads[th];
-            thread->th = th;
-            thread->stop = false;
-            thread->reset();
-        }
-
-        // Setup main search.
-        nodes = tb_hits = 0;
-        clock_t start = clock();
-        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = MIN_WINDOW;
-
-        // Iterative deepening.
-        while (depth <= MAX_DEPTH) {
-            int value;
-
-            threads[0].root_depth = depth;
-            if (depth == 1) {
-                value = threads[0].search(board, depth, alpha, beta);
-            } else {
-                start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
-                value = threads[0].search(board, depth, alpha, beta);
-                end_helpers(threads, &helpers, num_threads);
-            }
-
-            // End search by timeout.
-            if (threads[0].stop) {
-                if (depth == 1)
-                    best_move = get_tt_move(board);
-                break;
-            }
-
-            double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
-
-            // Window.
-            delta += delta / 2;
-            if (value <= alpha) {
-                alpha = std::max(value - delta, MIN_EVAL);
-            } else if (value >= beta) {
-                beta = std::min(value + delta, -MIN_EVAL);
-            } else {
-                delta = MIN_WINDOW + abs(value) / 2;
-                if (depth >= 6) {
-                    alpha = std::max(value - delta, MIN_EVAL);
-                    beta = std::min(value + delta, -MIN_EVAL);
-                }
-
-                best_move = get_tt_move(board);
-
-                // Output.
-                if (!silent) {
-                    printf("Depth %2i: Eval = %6s, Nodes = %10llu, TB-hits = "
-                           "%8llu, %.3fs, Nodes/s = %8llu, "
-                           "PV = [%s]\n",
-                           depth, to_value_str(board, value).c_str(), nodes, tb_hits,
-                           elapsed, uint64_t(nodes / elapsed),
-                           verify_pv(board, depth).c_str());
-                }
-
-                ++depth;
-            }
-        }
-    };
-
+    // Setup threads.
     Thread threads[num_threads];
-    std::thread search_thread(search, &threads[0]);
-    auto sleep_time = std::chrono::milliseconds(static_cast<int>(search_time * 1000));
-    std::this_thread::sleep_for(sleep_time);
-    threads[0].stop = true;
-    if (search_thread.joinable())
-        search_thread.join();
+    std::vector<std::thread> helpers;
+    for (uint8_t th = 0; th < num_threads; ++th) {
+        Thread *thread = &threads[th];
+        thread->th = th;
+        thread->stop = false;
+        thread->reset();
+    }
+
+    // Setup main search.
+    nodes = tb_hits = 0;
+    clock_t start = clock();
+    int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = MIN_WINDOW;
+
+    // Iterative deepening.
+    while (depth <= std::min(MAX_DEPTH, LIMITED_DEPTH)) {
+        int value;
+
+        threads[0].root_depth = depth;
+        if (depth == 1) {
+            value = threads[0].search(board, depth, alpha, beta);
+        } else {
+            start_helpers(threads, &helpers, num_threads, board, depth, alpha, beta);
+            value = threads[0].search(board, depth, alpha, beta);
+            end_helpers(threads, &helpers, num_threads);
+        }
+
+        // End search by timeout.
+        if (threads[0].stop) {
+            if (depth == 1)
+                best_move = get_tt_move(board);
+            break;
+        }
+
+        double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
+
+        // Window.
+        delta += delta / 2;
+        if (value <= alpha) {
+            alpha = std::max(value - delta, MIN_EVAL);
+        } else if (value >= beta) {
+            beta = std::min(value + delta, -MIN_EVAL);
+        } else {
+            delta = MIN_WINDOW + abs(value) / 2;
+            if (depth >= 6) {
+                alpha = std::max(value - delta, MIN_EVAL);
+                beta = std::min(value + delta, -MIN_EVAL);
+            }
+
+            best_move = get_tt_move(board);
+
+            // Output.
+            if (!silent) {
+                printf("Depth %2i: Eval = %6s, Nodes = %10llu, TB-hits = "
+                        "%8llu, %.3fs, Nodes/s = %8llu, "
+                        "PV = [%s]\n",
+                        depth, to_value_str(board, value).c_str(), nodes, tb_hits,
+                        elapsed, uint64_t(nodes / elapsed),
+                        verify_pv(board, depth).c_str());
+            }
+
+            ++depth;
+        }
+    }
 
     return best_move;
 }

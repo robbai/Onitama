@@ -2,20 +2,20 @@
 #include "client.h"
 #include "tt/zobrist.h"
 #include "evaluate.h"
-#include "runner/runner.h"
 #include "search.h"
 #include "nnue/network.h"
 
-int main(int argc, char *argv[]) {
+int main() {
     init_zobrist();
     init_move_tables();
     init_evaluation_parameters();
     init_search();
     init_network();
 
-    if (argc > 1) {
-        return use_runner();
-    }
+    std::string limited_depth;
+    std::cout << "Depth limit: ";
+    getline(std::cin, limited_depth);
+    LIMITED_DEPTH = std::stoi(limited_depth);
 
     std::string match_id;
     std::cout << "Match ID: ";

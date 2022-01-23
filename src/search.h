@@ -6,12 +6,13 @@
 
 constexpr uint8_t MAX_DEPTH = 64;
 
+extern uint8_t LIMITED_DEPTH;
+
 const uint8_t MAX_THREADS = std::thread::hardware_concurrency();
 
 void init_search();
 
-Move start_search(Board *board, float search_time = 1, bool silent = false,
-                  uint8_t num_threads = MAX_THREADS);
+Move start_search(Board *board, bool silent = false, uint8_t num_threads = MAX_THREADS);
 
 class Thread {
  private:

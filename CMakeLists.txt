@@ -55,8 +55,6 @@ add_executable(
         src/tt/zobrist.h
         src/evaluate.cpp
         src/evaluate.h
-        src/runner/runner.cpp
-        src/runner/runner.h
         src/nnue/layer.h
         src/nnue/nnue.cpp
         src/nnue/nnue.h

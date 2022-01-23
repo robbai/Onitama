@@ -13,8 +13,7 @@ using easywsclient::WebSocket;
 
 const string SERVER_URL = "ws://litama.herokuapp.com";
 
-const string USERNAME =
-        "robbai" + (GIT_BRANCH[0] == 0 ? "" : "-" + std::string(GIT_BRANCH));
+const string USERNAME = "robbai-depth";
 
 Turn parse_colour(const string &colour) {
     return (Turn)(colour == "red");
@@ -111,16 +110,16 @@ void Client::receive_state(rapidjson::Document &doc) {
 
     set_hash(&new_board);
 
-    // Setup and generate tablebase.
-    if (!GENERATED_TB)
-        setup_and_generate_tb(&new_board);
+    //    // Setup and generate tablebase.
+    //    if (!GENERATED_TB)
+    //        setup_and_generate_tb(&new_board);
 
     std::cout << std::endl << pretty_board(&new_board) << std::endl;
 
     // Calculate and send a move back.
     if (new_board.turn == (doc["indices"]["red"].GetInt() == index ? BLACK : WHITE) &&
         !(new_board == board)) {
-        Move move = start_search(&new_board, 1, false, 1);
+        Move move = start_search(&new_board, false, 1);
 
         // Translate move and send.
         string move_message = move_string(&new_board, move);
@@ -160,9 +159,9 @@ int Client::loop() {
 
     // Main loop.
     if (match_id.empty()) {
-        send("create " + USERNAME);
+        send("create " + USERNAME + "=" + std::to_string(LIMITED_DEPTH));
     } else {
-        send("join " + match_id + " " + USERNAME);
+        send("join " + match_id + " " + USERNAME + "=" + std::to_string(LIMITED_DEPTH));
         send("spectate " + match_id);
     }
     while (ws->getReadyState() != WebSocket::CLOSED && !end_loop) {
