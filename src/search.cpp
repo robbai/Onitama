@@ -233,14 +233,15 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             // Reductions and pruning.
             int8_t reduction = 0;
-            if (stage == QUIET && move_num) {
+            if (move_num) {
                 // Futility prune.
                 if (!pv_node && !is_mate_value(alpha) && !is_mate_value(beta) &&
-                    MIN_EVAL != static_value && static_value < alpha - 568 * (depth + 1))
+                    stage == QUIET && MIN_EVAL != static_value &&
+                    static_value < alpha - 568 * (depth + 1))
                     break;
 
                 // Late-move reduction.
-                if (depth > 2) {
+                if (depth > 2 && (stage == QUIET || !pv_node)) {
                     reduction = LMR_TABLE[depth][move_num];
 
                     Square from = MoveBits::from(move);
@@ -258,7 +259,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     if (reduction < 0)
                         reduction = 0;
                 }
-            } else if (!board->student_delta && MoveBits::capture(move)) {
+            }
+            if (!board->student_delta && MoveBits::capture(move)) {
                 // Capture extension.
                 reduction -= 1;
             }
