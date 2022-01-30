@@ -246,7 +246,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     Square from = MoveBits::from(move);
                     Square to = MoveBits::to(move);
                     bool piece_type = MoveBits::piece_type(move);
-                    if (history[board->turn][from][to][piece_type] > 30)
+                    if (history[board->turn][from][to][piece_type] > 60)
                         reduction -= 1;
 
                     if (!pv_node)
