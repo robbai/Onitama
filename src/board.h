@@ -18,6 +18,7 @@ class Board {
     uint16_t move_count = 0;
     Hash hash = 0;
     uint8_t student_count = 8;
+    int8_t student_delta = 0;
 
     bool game_over();
     Board copy();

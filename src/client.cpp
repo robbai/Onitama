@@ -105,6 +105,9 @@ void Client::receive_state(rapidjson::Document &doc) {
     new_board.move_count = doc["moves"].GetArray().Size();
     new_board.student_count = __builtin_popcount(new_board.pieces[WHITE][STUDENT] |
                                                  new_board.pieces[BLACK][STUDENT]);
+    new_board.student_delta =
+            __builtin_popcount(new_board.pieces[new_board.turn][STUDENT]) -
+            __builtin_popcount(new_board.pieces[!new_board.turn][STUDENT]);
 
     set_hash(&new_board);
 

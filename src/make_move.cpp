@@ -21,6 +21,7 @@ void make_move(Board *board, Move move) {
         board->hash ^= Zobrist::PIECES[!board->turn][STUDENT][to];
         board->pieces[!board->turn][STUDENT] ^= captured;
         --board->student_count;
+        ++board->student_delta;
     }
 
     // Swap the used-card and side-card.
@@ -39,6 +40,7 @@ void make_move(Board *board, Move move) {
     board->turn = !board->turn;
     board->hash ^= Zobrist::TURN;
     ++board->move_count;
+    board->student_delta *= -1;
 }
 
 void undo_move(Board *board, Move move) {
@@ -51,6 +53,7 @@ void undo_move(Board *board, Move move) {
     board->turn = !board->turn;
     board->hash ^= Zobrist::TURN;
     --board->move_count;
+    board->student_delta *= -1;
 
     // Optionally un-capture a student.
     if (MoveBits::capture(move)) {
@@ -58,6 +61,7 @@ void undo_move(Board *board, Move move) {
         board->pieces[!board->turn][STUDENT] |= captured;
         board->hash ^= Zobrist::PIECES[!board->turn][STUDENT][to];
         ++board->student_count;
+        --board->student_delta;
     }
 
     // Move the piece.
