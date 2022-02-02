@@ -23,7 +23,7 @@ uint64_t tb_hits = 0;
 
 uint8_t root_size = 0;
 
-enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
+enum Stage : uint8_t { TT, IID, CAPTURE, KILLER, QUIET, STAGE_NUM };
 enum QStage : uint8_t { Q_RECAPTURE, Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
@@ -189,6 +189,16 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     searched_tt_move = true;
                 }
                 break;
+            case IID:
+                if (!searched_tt_move && depth > 1) {
+                    search(board, depth - 1, alpha, beta, ply, cut_node, last_move,
+                           false);
+                    if (move_exists(board, entry->move)) {
+                        moves[0] = entry->move;
+                        size = 1;
+                    }
+                }
+                break;
             case KILLER:
                 for (uint8_t k = 0; k < KILLER_NUM; ++k) {
                     Move killer_move = killers[ply][k];
@@ -208,8 +218,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 size = gen_moves(board, moves, targets);
 
                 // Sort moves.
-                sort_moves(board, moves, size, stage == CAPTURE, searched_tt_move,
-                           last_move);
+                sort_moves(board, moves, size, stage == CAPTURE, last_move);
 
                 if (stage == QUIET && depth < 7)
                     static_value = evaluate(board, false);
@@ -223,7 +232,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             // Filter out PV and TT moves.
             if (stage >= CAPTURE) {
-                if (searched_tt_move && move == entry->move)
+                if (move == entry->move)
                     continue;
                 if (stage > KILLER && is_killer(ply, move))
                     continue;
@@ -301,12 +310,13 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     // Cut-off.
                     if (value >= beta) {
                         if (!MoveBits::capture(move)) {
-                            // History heuristic.
+                            // History.
                             Square from = MoveBits::from(move);
                             Square to = MoveBits::to(move);
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
 
+                            // Counter-card.
                             counters[board->cards[board->turn][0]]
                                     [board->cards[board->turn][1]][board->side_card] =
                                             board->cards[board->turn]
@@ -444,7 +454,7 @@ void Thread::reset() {
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
-                        bool tt_move_exists, Move last_move) {
+                        Move last_move) {
     Square recapture_sq = last_move ? MoveBits::to(last_move) : SQUARE_NUM;
 
     // Assign scores.
@@ -459,18 +469,16 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
             continue;
         }
 
-        // History heuristic.
+        // History.
         Square from = MoveBits::from(move);
         bool piece_type = MoveBits::piece_type(move);
         sort_values[i] = history[board->turn][from][to][piece_type];
 
+        // Counter-card.
         if (board->cards[board->turn][MoveBits::card_index(move)] ==
             counters[board->cards[board->turn][0]][board->cards[board->turn][1]]
                     [board->side_card])
             sort_values[i] += 1000;
-
-        if (!tt_move_exists)
-            sort_values[i] = sort_values[i] * 10000 + evaluate_move(board, move);
     }
 
     // Sort.
@@ -527,8 +535,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
         }
 
         // Setup main search.
-        nodes = 0;
-        tb_hits = 0;
+        nodes = tb_hits = 0;
         clock_t start = clock();
         int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = WINDOW;
 
