@@ -16,7 +16,7 @@
 #include "tt/ttable.h"
 #include "evaluate.h"
 
-constexpr int MIN_EVAL = -100000, WINDOW = 117;
+constexpr int MIN_EVAL = -100000, MIN_WINDOW = 20;
 
 uint64_t nodes = 0;
 uint64_t tb_hits = 0;
@@ -514,6 +514,22 @@ void end_helpers(Thread *threads, std::vector<std::thread> *helpers,
     }
 }
 
+std::string to_value_str(Board *board, int value) {
+    std::string value_str;
+    if (is_mate_value(value)) {
+        int mate_plies = std::abs(MIN_EVAL + board->move_count + std::abs(value));
+        int mate_depth = static_cast<int>(std::copysign((mate_plies + 1) / 2, value));
+        value_str = "#" + std::to_string(mate_depth);
+    } else {
+        char value_buff[6];
+        snprintf(value_buff, sizeof(value_buff), "%2.2f", to_centi(value) / 100.0);
+        value_str = value_buff;
+        if (to_centi(value) > 0)
+            value_str = "+" + value_str;
+    }
+    return value_str;
+}
+
 Move start_search(Board *board, float search_time, bool silent, uint8_t num_threads) {
     Move best_move;
 
@@ -530,7 +546,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
         // Setup main search.
         nodes = tb_hits = 0;
         clock_t start = clock();
-        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = WINDOW;
+        int depth = 1, alpha = MIN_EVAL, beta = -MIN_EVAL, delta = MIN_WINDOW;
 
         // Iterative deepening.
         while (depth <= MAX_DEPTH) {
@@ -554,42 +570,28 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
             double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
 
             // Window.
-            delta += delta / 4;
+            delta += delta / 2;
             if (value <= alpha) {
                 alpha = std::max(value - delta, MIN_EVAL);
             } else if (value >= beta) {
                 beta = std::min(value + delta, -MIN_EVAL);
             } else {
-                delta = WINDOW;
+                delta = MIN_WINDOW + abs(value) / 2;
                 if (depth >= 6) {
-                    alpha = std::max(value - WINDOW, MIN_EVAL);
-                    beta = std::min(value + WINDOW, -MIN_EVAL);
+                    alpha = std::max(value - delta, MIN_EVAL);
+                    beta = std::min(value + delta, -MIN_EVAL);
                 }
 
                 best_move = get_tt_move(board);
 
                 // Output.
                 if (!silent) {
-                    std::string value_str;
-                    if (is_mate_value(value)) {
-                        int mate_plies =
-                                std::abs(MIN_EVAL + board->move_count + std::abs(value));
-                        int mate_depth = static_cast<int>(
-                                std::copysign((mate_plies + 1) / 2, value));
-                        value_str = "#" + std::to_string(mate_depth);
-                    } else {
-                        char value_buff[6];
-                        snprintf(value_buff, sizeof(value_buff), "%2.2f",
-                                 to_centi(value) / 100.0);
-                        value_str = value_buff;
-                        if (to_centi(value) > 0)
-                            value_str = "+" + value_str;
-                    }
                     printf("Depth %2i: Eval = %6s, Nodes = %10llu, TB-hits = "
                            "%8llu, %.3fs, Nodes/s = %8llu, "
                            "PV = [%s]\n",
-                           depth, value_str.c_str(), nodes, tb_hits, elapsed,
-                           uint64_t(nodes / elapsed), verify_pv(board, depth).c_str());
+                           depth, to_value_str(board, value).c_str(), nodes, tb_hits,
+                           elapsed, uint64_t(nodes / elapsed),
+                           verify_pv(board, depth).c_str());
                 }
 
                 ++depth;
