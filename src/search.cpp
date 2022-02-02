@@ -175,6 +175,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     Move best_move;
     int best_value = MIN_EVAL, static_value = MIN_EVAL;
 
+    if (!pv_node && depth > 5 && !(hash_match && move_exists(board, entry->move)))
+        depth -= 2;
+
     // Stage loop.
     Move *moves = move_lists[ply];
     int8_t move_num = -1;
@@ -190,7 +193,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 }
                 break;
             case IID:
-                if (!searched_tt_move && depth > 6) {
+                if (!searched_tt_move && pv_node && depth > 6) {
                     search(board, depth - 6, alpha, beta, ply, cut_node, last_move,
                            false);
                     if (move_exists(board, entry->move)) {
