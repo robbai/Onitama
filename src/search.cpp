@@ -190,8 +190,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 }
                 break;
             case IID:
-                if (!searched_tt_move && depth > 1) {
-                    search(board, depth - 1, alpha, beta, ply, cut_node, last_move,
+                if (!searched_tt_move && depth > 6) {
+                    search(board, depth - 6, alpha, beta, ply, cut_node, last_move,
                            false);
                     if (move_exists(board, entry->move)) {
                         moves[0] = entry->move;
