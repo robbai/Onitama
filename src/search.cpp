@@ -23,7 +23,7 @@ uint64_t tb_hits = 0;
 
 uint8_t root_size = 0;
 
-enum Stage : uint8_t { TT, IID, CAPTURE, KILLER, QUIET, STAGE_NUM };
+enum Stage : uint8_t { TT, CAPTURE, KILLER, QUIET, STAGE_NUM };
 enum QStage : uint8_t { Q_RECAPTURE, Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
@@ -175,7 +175,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     Move best_move;
     int best_value = MIN_EVAL, static_value = MIN_EVAL;
 
-    if (!pv_node && depth > 5 && !(hash_match && move_exists(board, entry->move)))
+    if (depth > 5 && !(hash_match && move_exists(board, entry->move)))
         depth -= 2;
 
     // Stage loop.
@@ -190,16 +190,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     moves[0] = entry->move;
                     size = 1;
                     searched_tt_move = true;
-                }
-                break;
-            case IID:
-                if (!searched_tt_move && pv_node && depth > 5) {
-                    search(board, depth - 5, alpha, beta, ply, cut_node, last_move,
-                           false);
-                    if (move_exists(board, entry->move)) {
-                        moves[0] = entry->move;
-                        size = 1;
-                    }
                 }
                 break;
             case KILLER:
