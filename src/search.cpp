@@ -38,7 +38,7 @@ void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
             LMR_TABLE[depth][move_num] =
-                    (0.295232 + log(depth * 2.19754) * log(move_num * 2.89954) / 2.20876);
+                    (0.36904 + log(depth * 2.74693) * log(move_num * 3.62443) * 0.56593);
     }
 }
 
