@@ -309,11 +309,17 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                             bool piece_type = MoveBits::piece_type(move);
                             history[board->turn][from][to][piece_type] += depth * depth;
 
+                            // Counter-history.
+                            if (last_move)
+                                counter_hist[MoveBits::piece_type(last_move)]
+                                            [MoveBits::to(last_move)][piece_type][to] +=
+                                        depth * depth;
+
                             // Counter-card.
-                            counters[board->cards[board->turn][0]]
-                                    [board->cards[board->turn][1]][board->side_card] =
-                                            board->cards[board->turn]
-                                                        [MoveBits::card_index(move)];
+                            counter_card[board->cards[board->turn][0]]
+                                        [board->cards[board->turn][1]][board->side_card] =
+                                                board->cards[board->turn]
+                                                            [MoveBits::card_index(move)];
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
@@ -434,16 +440,23 @@ void Thread::reset() {
                 for (uint16_t &hist : piece_type)
                     hist = 0;
 
+    // Counter-history.
+    for (auto &pt1 : counter_hist)
+        for (auto &sq1 : pt1)
+            for (auto &pt2 : sq1)
+                for (auto &sq2 : pt2)
+                    sq2 = 0;
+
+    // Counter-cards.
+    for (auto &card1 : counter_card)
+        for (auto &card2 : card1)
+            for (auto &card3 : card2)
+                card3 = CARD_NUM;
+
     // Killers.
     for (auto &killer : killers)
         for (Move &move : killer)
             move = 0;
-
-    // Counter-cards.
-    for (auto &card1 : counters)
-        for (auto &card2 : card1)
-            for (auto &card3 : card2)
-                card3 = CARD_NUM;
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
@@ -462,16 +475,17 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
             continue;
         }
 
-        // History.
-        Square from = MoveBits::from(move);
-        bool piece_type = MoveBits::piece_type(move);
-        sort_values[i] = history[board->turn][from][to][piece_type];
+        // Counter-history.
+        if (last_move)
+            sort_values[i] =
+                    counter_hist[MoveBits::piece_type(last_move)][MoveBits::to(last_move)]
+                                [MoveBits::piece_type(move)][to];
 
         // Counter-card.
         if (board->cards[board->turn][MoveBits::card_index(move)] ==
-            counters[board->cards[board->turn][0]][board->cards[board->turn][1]]
-                    [board->side_card])
-            sort_values[i] += 1000;
+            counter_card[board->cards[board->turn][0]][board->cards[board->turn][1]]
+                        [board->side_card])
+            sort_values[i] += 1500;
     }
 
     // Sort.
