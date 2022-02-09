@@ -70,13 +70,13 @@ def main():
                 if elo_range:
                     elo: float = sum(elo_range) / len(elo_range)
                     total_range: float = abs(elo_range[0] - elo_range[1]) / 2
-
                     logging.info(info + f" ({elo:.2f} ± {total_range:.2f})")
-                    if max(los, 1 - los) > 0.95:
-                        logging.warning("Finished, shutting down processes")
-                        break
                 else:
                     logging.info(info)
+
+                if sum(score) >= 25 and max(los, 1 - los) >= 0.95:
+                    logging.warning("Finished, shutting down processes")
+                    break
 
         [queue.put(None) for _ in range(cores)]
         pool.close()
