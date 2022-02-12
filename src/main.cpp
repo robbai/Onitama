@@ -11,5 +11,5 @@ int main() {
     init_search();
     init_network();
 
-    return run_tune(1, 0.3, 500, false);
+    return run_tune(90, 20, 100, false);
 }

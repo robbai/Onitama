@@ -11,7 +11,7 @@
 
 constexpr uint16_t MAX_GAME_LENGTH = 256;
 
-constexpr float SEARCH_TIME = 0.05;
+constexpr float SEARCH_TIME = 0.1;
 
 float run_match(Board board, float params1[], float params2[], const bool reinit_search);
 
@@ -24,8 +24,8 @@ int run_tune(const float magnitude, const float initial_delta, const int iterati
     const float alpha = 0.602, gamma = 0.101;
 
     const float A = iterations / 10.0;
-    const float c = 0.4;
-    const float a = (initial_delta * pow(A + 1, alpha)) / magnitude;
+    const float c = 0.5;
+    const float a = pow(A + 1, alpha) * initial_delta / magnitude;
 
     // Setup the board and cards.
     Board board;
@@ -41,14 +41,14 @@ int run_tune(const float magnitude, const float initial_delta, const int iterati
     // Run loop.
     clock_t start = clock();
     float params1[PARAM_NUM], params2[PARAM_NUM], delta_k[PARAM_NUM];
-    for (int k = 0; k < iterations; k++) {
-        std::cout << (k + 1) << ": ";
+    for (int k = 1; k <= iterations; ++k) {
+        std::cout << k << ": ";
 
         // Calculate delta.
-        float a_k = a / pow(k + 1 + A, alpha);
-        float c_k = c / pow(k + 1, gamma);
+        float a_k = a / pow(k + A, alpha);
+        float c_k = c / pow(k, gamma);
         for (int i = 0; i < PARAM_NUM; ++i) {
-            delta_k[i] = (2 * round(dist(mt)) - 1) * initial_delta;
+            delta_k[i] = (2 * round(dist(mt)) - 1) * magnitude;
             params1[i] = PARAMS[i].value + c_k * delta_k[i];
             params2[i] = PARAMS[i].value - c_k * delta_k[i];
 
@@ -74,14 +74,14 @@ int run_tune(const float magnitude, const float initial_delta, const int iterati
         // Apply change.
         std::cout << " -> [";
         for (int i = 0; i < PARAM_NUM; ++i) {
-            PARAMS[i].value += a_k * delta_k[i] * L;
+            PARAMS[i].value += a_k * L * delta_k[i] / (2 * c_k);
             PARAMS[i].value = std::max(PARAMS[i].minimum,
                                        std::min(PARAMS[i].maximum, PARAMS[i].value));
             std::cout << PARAMS[i].value << (i == PARAM_NUM - 1 ? "]" : ", ");
         }
 
         double elapsed = (std::clock() - start) / static_cast<double>(CLOCKS_PER_SEC);
-        double fraction = static_cast<double>(k + 1) / iterations;
+        double fraction = static_cast<double>(k) / iterations;
         std::cout << " (" << int(elapsed / fraction - elapsed) << "s)" << std::endl;
     }
 
@@ -99,7 +99,7 @@ float run_game(Board board, float params1[], float params2[], const bool reinit_
         if (board.game_over()) {
             for (int i = 0; i < PARAM_NUM; ++i)
                 PARAMS[i].value = params_prev[i];
-            return (board.turn ? 1 : -1);
+            return board.turn ? 1 : -1;
         }
 
         // Terminate by repetition.
@@ -123,7 +123,6 @@ float run_game(Board board, float params1[], float params2[], const bool reinit_
 }
 
 float run_match(Board board, float params1[], float params2[], const bool reinit_search) {
-    return (run_game(board, params1, params2, reinit_search) -
-            run_game(board, params2, params1, reinit_search)) /
-           2;
+    return run_game(board, params1, params2, reinit_search) -
+           run_game(board, params2, params1, reinit_search);
 }
