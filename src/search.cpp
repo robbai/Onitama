@@ -472,7 +472,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         if (captures) {
             sort_values[i] = evaluate_move(board, move);
             if (to == last_to)
-                sort_values[i] += 100;
+                sort_values[i] += 226;
             continue;
         }
 
@@ -485,7 +485,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         if (board->cards[board->turn][MoveBits::card_index(move)] ==
             counter_card[board->cards[board->turn][0]][board->cards[board->turn][1]]
                         [board->side_card])
-            sort_values[i] += 1500;
+            sort_values[i] += 1645;
     }
 
     // Sort.
