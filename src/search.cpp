@@ -246,11 +246,16 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 if (depth > 2 && (stage == QUIET || !pv_node)) {
                     reduction = LMR_TABLE[depth][move_num];
 
-                    Square from = MoveBits::from(move);
-                    Square to = MoveBits::to(move);
-                    bool piece_type = MoveBits::piece_type(move);
-                    if (history[board->turn][from][to][piece_type] > 60)
-                        reduction -= 1;
+                    if (last_move) {
+                        Square from = MoveBits::from(move);
+                        Square to = MoveBits::to(move);
+                        bool piece_type = MoveBits::piece_type(move);
+                        uint16_t hist =
+                                counter_hist[MoveBits::piece_type(last_move)]
+                                            [MoveBits::to(last_move)][piece_type][to];
+                        if (hist > 90)
+                            reduction -= 1;
+                    }
 
                     if (!pv_node)
                         reduction += 1;
@@ -303,17 +308,15 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     // Cut-off.
                     if (value >= beta) {
                         if (!MoveBits::capture(move)) {
-                            // History.
-                            Square from = MoveBits::from(move);
-                            Square to = MoveBits::to(move);
-                            bool piece_type = MoveBits::piece_type(move);
-                            history[board->turn][from][to][piece_type] += depth * depth;
-
                             // Counter-history.
-                            if (last_move)
+                            if (last_move) {
+                                Square from = MoveBits::from(move);
+                                Square to = MoveBits::to(move);
+                                bool piece_type = MoveBits::piece_type(move);
                                 counter_hist[MoveBits::piece_type(last_move)]
                                             [MoveBits::to(last_move)][piece_type][to] +=
                                         depth * depth;
+                            }
 
                             // Counter-card.
                             counter_card[board->cards[board->turn][0]]
@@ -433,13 +436,6 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 }
 
 void Thread::reset() {
-    // History.
-    for (auto &sq1 : history)
-        for (auto &sq2 : sq1)
-            for (auto &piece_type : sq2)
-                for (uint16_t &hist : piece_type)
-                    hist = 0;
-
     // Counter-history.
     for (auto &pt1 : counter_hist)
         for (auto &sq1 : pt1)
@@ -461,7 +457,12 @@ void Thread::reset() {
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                         Move last_move) {
-    Square recapture_sq = last_move ? MoveBits::to(last_move) : SQUARE_NUM;
+    Square last_to = SQUARE_NUM;
+    bool last_pt = false;
+    if (last_move) {
+        last_to = MoveBits::to(last_move);
+        last_pt = MoveBits::piece_type(last_move);
+    }
 
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
@@ -470,7 +471,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
 
         if (captures) {
             sort_values[i] = evaluate_move(board, move);
-            if (to == recapture_sq)
+            if (to == last_to)
                 sort_values[i] += 100;
             continue;
         }
@@ -478,8 +479,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         // Counter-history.
         if (last_move)
             sort_values[i] =
-                    counter_hist[MoveBits::piece_type(last_move)][MoveBits::to(last_move)]
-                                [MoveBits::piece_type(move)][to];
+                    counter_hist[last_pt][last_to][MoveBits::piece_type(move)][to];
 
         // Counter-card.
         if (board->cards[board->turn][MoveBits::card_index(move)] ==
