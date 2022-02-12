@@ -253,7 +253,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                         uint16_t hist =
                                 counter_hist[MoveBits::piece_type(last_move)]
                                             [MoveBits::to(last_move)][piece_type][to];
-                        if (hist > 90)
+                        if (hist > 260)
                             reduction -= 1;
                     }
 
