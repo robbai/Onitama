@@ -78,7 +78,7 @@ bool is_mate_value(int value) {
 }
 
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool cut_node,
-                   Move last_move, bool check_tb) {
+                   Move last_move, bool check_tb, Move excluded_move) {
     if (stop)
         return 0;
 
@@ -222,7 +222,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         for (uint8_t move_index = 0; move_index < size; ++move_index) {
             const Move move = moves[move_index];
 
-            // Filter out PV and TT moves.
+            // Filter moves.
+            if (move == excluded_move)
+                continue;
             if (stage >= CAPTURE) {
                 if (move == entry->move)
                     continue;
@@ -266,10 +268,26 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                         reduction = 0;
                 }
             }
-            if (!board->student_delta && MoveBits::capture(move)) {
-                // Capture extension.
-                reduction -= 1;
+
+            // Extensions.
+            if (ply < root_depth * 2) {
+                if (move == entry->move && !root && !excluded_move && depth > 3 &&
+                    entry->type != UPPER) {
+                    // Singular extension.
+                    int singular_beta = entry->value - 10 * depth;
+                    int singular_depth = (depth - 1) / 2;
+                    int value =
+                            search(board, singular_depth, singular_beta - 1,
+                                   singular_beta, ply, cut_node, last_move, false, move);
+                    if (value < singular_beta)
+                        reduction -= 1;
+                }
+                if (!board->student_delta && MoveBits::capture(move)) {
+                    // Capture extension.
+                    reduction -= 1;
+                }
             }
+
             if (reduction > depth - 1)
                 reduction = depth - 1;
 
@@ -511,7 +529,8 @@ void start_helpers(Thread *threads, std::vector<std::thread> *helpers,
 
         auto search = [th, board, depth, alpha, beta](Thread *thread) {
             Board thread_board = board->copy();
-            thread->search(&thread_board, depth + (th - 1) / 2, alpha, beta);
+            thread->root_depth = depth + (th - 1) / 2;
+            thread->search(&thread_board, thread->root_depth, alpha, beta);
         };
         std::thread helper = std::thread(search, thread);
         helpers->push_back(std::move(helper));
@@ -565,6 +584,7 @@ Move start_search(Board *board, float search_time, bool silent, uint8_t num_thre
         while (depth <= MAX_DEPTH) {
             int value;
 
+            threads[0].root_depth = depth;
             if (depth == 1) {
                 value = threads[0].search(board, depth, alpha, beta);
             } else {
