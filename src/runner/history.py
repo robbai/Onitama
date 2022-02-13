@@ -27,15 +27,15 @@ def load_previous_result(engine_paths: List[str], move_time: float) -> List[floa
             continue
         if tokens[0] == hashes[0] and tokens[1] == hashes[1]:
             return [float(tokens[3]), float(tokens[4])], [
-                float(tokens[5]),
-                float(tokens[6]),
+                int(tokens[5]),
+                int(tokens[6]),
             ]
         elif tokens[0] == hashes[1] and tokens[1] == hashes[0]:
             return [float(tokens[4]), float(tokens[3])], [
-                float(tokens[6]),
-                float(tokens[5]),
+                int(tokens[6]),
+                int(tokens[5]),
             ]
-    return [0, 0], [0, 0]
+    return [0.0, 0.0], [0, 0]
 
 
 def write_result(

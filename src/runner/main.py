@@ -9,7 +9,7 @@ from cards import NUM_CARDS
 from match import Match
 from history import write_result, load_previous_result
 
-MOVE_TIME: float = 0.1
+MOVE_TIME: float = 0.2
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s -> %(message)s", datefmt="%I:%M:%S"
@@ -74,7 +74,7 @@ def main():
                 else:
                     logging.info(info)
 
-                if sum(score) >= 25 and max(los, 1 - los) >= 0.95:
+                if sum(score) >= 50 and max(los, 1 - los) >= 0.95:
                     logging.warning("Finished, shutting down processes")
                     break
 
