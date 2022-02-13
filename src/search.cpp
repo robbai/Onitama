@@ -271,9 +271,10 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
             // Extensions.
             if (ply < root_depth * 2) {
+                // Singular extension.
                 if (move == entry->move && !root && !excluded_move && depth > 3 &&
-                    entry->type != UPPER) {
-                    // Singular extension.
+                    entry->type != UPPER && abs(entry->value) < 6000 &&
+                    entry->depth > depth - 5) {
                     int singular_beta = entry->value - 10 * depth;
                     int singular_depth = (depth - 1) / 2;
                     int value =
@@ -282,8 +283,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     if (value < singular_beta)
                         reduction -= 1;
                 }
+
+                // Capture extension.
                 if (!board->student_delta && MoveBits::capture(move)) {
-                    // Capture extension.
                     reduction -= 1;
                 }
             }
