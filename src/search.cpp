@@ -115,7 +115,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     }
 
     // Score repetitions in search as a draw.
-    for (uint8_t p = (ply & 1); p < ply; p += 2) {
+    for (uint8_t p = 2 + (ply & 1); p < ply; p += 2) {
         if (this->hash_line[p] == board->hash && pv_ply[p] == pv_node) {
             ++nodes;
             return 0;
