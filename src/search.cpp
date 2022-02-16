@@ -339,9 +339,10 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
                             // Counter-card.
                             counter_card[board->cards[board->turn][0]]
-                                        [board->cards[board->turn][1]][board->side_card] =
-                                                board->cards[board->turn]
-                                                            [MoveBits::card_index(move)];
+                                        [board->cards[board->turn][1]]
+                                        [board->side_card] +=
+                                    (MoveBits::card_index(move) ? 1 : -1) *
+                                    (depth * depth);
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
@@ -465,8 +466,8 @@ void Thread::reset() {
     // Counter-cards.
     for (auto &card1 : counter_card)
         for (auto &card2 : card1)
-            for (auto &card3 : card2)
-                card3 = CARD_NUM;
+            for (auto &val : card2)
+                val = 0;
 
     // Killers.
     for (auto &killer : killers)
@@ -501,10 +502,9 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                     counter_hist[last_pt][last_to][MoveBits::piece_type(move)][to];
 
         // Counter-card.
-        if (board->cards[board->turn][MoveBits::card_index(move)] ==
-            counter_card[board->cards[board->turn][0]][board->cards[board->turn][1]]
-                        [board->side_card])
-            sort_values[i] += 1645;
+        sort_values[i] += counter_card[board->cards[board->turn][0]]
+                                      [board->cards[board->turn][1]][board->side_card] *
+                          (MoveBits::card_index(move) ? 1 : -1);
     }
 
     // Sort.
