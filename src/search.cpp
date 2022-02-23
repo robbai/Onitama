@@ -501,6 +501,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
             sort_values[i] = evaluate_move(board, move);
             if (to == last_to)
                 sort_values[i] += 226;
+            sort_values[i] *= 2;
             sort_values[i] +=
                     counter_card[board->cards[board->turn][0]]
                                 [board->cards[board->turn][1]][board->side_card][1] *
