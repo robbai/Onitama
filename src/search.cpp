@@ -332,7 +332,15 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 if (value > alpha) {
                     // Cut-off.
                     if (value >= beta) {
-                        if (!MoveBits::capture(move)) {
+                        bool capture = MoveBits::capture(move);
+
+                        // Counter-card.
+                        counter_card[board->cards[board->turn][0]]
+                                    [board->cards[board->turn][1]][board->side_card]
+                                    [capture] +=
+                                (MoveBits::card_index(move) ? 1 : -1) * (depth * depth);
+
+                        if (!capture) {
                             // Counter-history.
                             if (last_move) {
                                 Square from = MoveBits::from(move);
@@ -342,13 +350,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                                             [MoveBits::to(last_move)][piece_type][to] +=
                                         depth * depth;
                             }
-
-                            // Counter-card.
-                            counter_card[board->cards[board->turn][0]]
-                                        [board->cards[board->turn][1]]
-                                        [board->side_card] +=
-                                    (MoveBits::card_index(move) ? 1 : -1) *
-                                    (depth * depth);
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
@@ -473,7 +474,8 @@ void Thread::reset() {
     for (auto &card1 : counter_card)
         for (auto &card2 : card1)
             for (auto &val : card2)
-                val = 0;
+                for (auto &cap : val)
+                    cap = 0;
 
     // Killers.
     for (auto &killer : killers)
@@ -499,6 +501,10 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
             sort_values[i] = evaluate_move(board, move);
             if (to == last_to)
                 sort_values[i] += 226;
+            sort_values[i] +=
+                    counter_card[board->cards[board->turn][0]]
+                                [board->cards[board->turn][1]][board->side_card][1] *
+                    (MoveBits::card_index(move) ? 1 : -1);
             continue;
         }
 
@@ -508,9 +514,10 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                     counter_hist[last_pt][last_to][MoveBits::piece_type(move)][to];
 
         // Counter-card.
-        sort_values[i] += counter_card[board->cards[board->turn][0]]
-                                      [board->cards[board->turn][1]][board->side_card] *
-                          (MoveBits::card_index(move) ? 1 : -1);
+        sort_values[i] +=
+                counter_card[board->cards[board->turn][0]][board->cards[board->turn][1]]
+                            [board->side_card][0] *
+                (MoveBits::card_index(move) ? 1 : -1);
     }
 
     // Sort.
