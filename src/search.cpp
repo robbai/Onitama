@@ -343,18 +343,20 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                         if (!capture) {
                             // Counter-history.
                             if (last_move) {
-                                Square from = MoveBits::from(move);
-                                Square to = MoveBits::to(move);
-                                bool piece_type = MoveBits::piece_type(move);
                                 counter_hist[MoveBits::piece_type(last_move)]
-                                            [MoveBits::to(last_move)][piece_type][to] +=
-                                        depth * depth;
+                                            [MoveBits::to(last_move)]
+                                            [MoveBits::piece_type(move)]
+                                            [MoveBits::to(move)] += depth * depth;
                             }
 
                             // Killer move.
                             for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
                                 killers[ply][k] = killers[ply][k - 1];
                             killers[ply][0] = move;
+                        } else {
+                            // Capture-history.
+                            capture_hist[MoveBits::piece_type(move)][MoveBits::from(move)]
+                                        [MoveBits::to(move)] += depth * depth;
                         }
 
                         break;
@@ -470,6 +472,12 @@ void Thread::reset() {
                 for (auto &sq2 : pt2)
                     sq2 = 0;
 
+    // Capture-history.
+    for (auto &pt : capture_hist)
+        for (auto &sq1 : pt)
+            for (auto &sq2 : sq1)
+                sq2 = 0;
+
     // Counter-cards.
     for (auto &card1 : counter_card)
         for (auto &card2 : card1)
@@ -495,30 +503,29 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
     // Assign scores.
     for (uint8_t i = 0; i < size; ++i) {
         const Move move = moves[i];
+        bool piece_type = MoveBits::piece_type(move);
+        Square from = MoveBits::from(move);
         Square to = MoveBits::to(move);
+        bool card_index = MoveBits::card_index(move);
 
         if (captures) {
-            sort_values[i] = evaluate_move(board, move);
-            if (to == last_to)
-                sort_values[i] += 226;
-            sort_values[i] *= 2;
+            sort_values[i] = capture_hist[piece_type][from][to];
             sort_values[i] +=
                     counter_card[board->cards[board->turn][0]]
                                 [board->cards[board->turn][1]][board->side_card][1] *
-                    (MoveBits::card_index(move) ? 1 : -1);
+                    (card_index ? 1 : -1) * 8;
             continue;
         }
 
         // Counter-history.
         if (last_move)
-            sort_values[i] =
-                    counter_hist[last_pt][last_to][MoveBits::piece_type(move)][to];
+            sort_values[i] = counter_hist[last_pt][last_to][piece_type][to];
 
         // Counter-card.
         sort_values[i] +=
                 counter_card[board->cards[board->turn][0]][board->cards[board->turn][1]]
                             [board->side_card][0] *
-                (MoveBits::card_index(move) ? 1 : -1);
+                (card_index ? 1 : -1);
     }
 
     // Sort.
