@@ -177,7 +177,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
     // Prepare branching.
     Move best_move;
-    int best_value = MIN_EVAL, static_value = MIN_EVAL;
+    int best_value = MIN_EVAL;
 
     if (depth > 5 && !(hash_match && move_exists(board, entry->move)))
         depth -= 2;
@@ -216,10 +216,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
                 // Sort moves.
                 sort_moves(board, moves, size, stage == CAPTURE, last_move);
-
-                if (stage == QUIET && depth < 7)
-                    static_value = evaluate(board, false);
-
                 break;
         }
 
@@ -243,12 +239,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             // Reductions and pruning.
             int8_t reduction = 0;
             if (move_num) {
-                // Futility prune.
-                if (!pv_node && !is_mate_value(alpha) && !is_mate_value(beta) &&
-                    stage == QUIET && MIN_EVAL != static_value &&
-                    static_value < alpha - 568 * (depth + 1))
-                    break;
-
                 // Late-move reduction.
                 if (depth > 2 && (stage == QUIET || !pv_node)) {
                     reduction = LMR_TABLE[depth][move_num];
