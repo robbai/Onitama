@@ -491,6 +491,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                         Move last_move) {
     Square last_to = SQUARE_NUM;
     bool last_pt = false;
+    bool last_capture = MoveBits::capture(last_move);
     if (last_move) {
         last_to = MoveBits::to(last_move);
         last_pt = MoveBits::piece_type(last_move);
@@ -510,6 +511,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                     counter_card[board->cards[board->turn][0]]
                                 [board->cards[board->turn][1]][board->side_card][1] *
                     (card_index ? 1 : -1) * 8;
+            if (to == last_to)
+                sort_values[i] += last_capture ? 162 : 810;
             continue;
         }
 
