@@ -28,12 +28,6 @@ enum QStage : uint8_t { Q_RECAPTURE, Q_CAPTURE, Q_ALL, Q_STAGE_NUM };
 
 int LMR_TABLE[MAX_DEPTH][MAX_MOVES];
 
-namespace ProbCut {
-    const int D = 5;
-    const float a = 0.804429;
-    const int T_sigma = 1369;
-}  // namespace ProbCut
-
 void init_search() {
     for (int depth = 0; depth < MAX_DEPTH; depth++)
         for (int move_num = 0; move_num < MAX_MOVES; move_num++)
@@ -162,17 +156,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (alpha >= beta)
                 return entry->value;
         }
-    }
-
-    // ProbCut.
-    if (!pv_node && depth == ProbCut::D) {
-        int bound = (beta + ProbCut::T_sigma) / ProbCut::a;
-        if (!is_mate_value(beta) && q_search(board, bound - 1, bound, ply) >= bound)
-            return beta;
-
-        bound = (alpha - ProbCut::T_sigma) / ProbCut::a;
-        if (!is_mate_value(alpha) && q_search(board, bound, bound + 1, ply) <= bound)
-            return alpha;
     }
 
     // Prepare branching.
