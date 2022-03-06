@@ -66,5 +66,5 @@ float nnue(Board *board) {
 
 int evaluate_nnue(Board *board) {
     float value = nnue(board);
-    return 859 * value + 890 * (value * value * value);
+    return 294 * value + 848 * (value * value * value);
 }
