@@ -233,12 +233,11 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     reduction = LMR_TABLE[depth][move_num];
 
                     if (last_move) {
-                        Square from = MoveBits::from(move);
                         Square to = MoveBits::to(move);
                         bool piece_type = MoveBits::piece_type(move);
-                        uint16_t hist =
-                                counter_hist[MoveBits::piece_type(last_move)]
-                                            [MoveBits::to(last_move)][piece_type][to];
+                        int hist = counter_hist[MoveBits::piece_type(last_move)]
+                                               [MoveBits::to(last_move)][piece_type][to]
+                                               [board->student_count];
                         if (hist > 260)
                             reduction -= 1;
                     }
@@ -322,10 +321,11 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                         if (!capture) {
                             // Counter-history.
                             if (last_move) {
-                                counter_hist[MoveBits::piece_type(last_move)]
-                                            [MoveBits::to(last_move)]
-                                            [MoveBits::piece_type(move)]
-                                            [MoveBits::to(move)] += depth * depth;
+                                for (int8_t p = board->student_count; p >= 0; p -= 2)
+                                    counter_hist[MoveBits::piece_type(last_move)]
+                                                [MoveBits::to(last_move)]
+                                                [MoveBits::piece_type(move)]
+                                                [MoveBits::to(move)][p] += depth * depth;
                             }
 
                             // Killer move.
@@ -334,8 +334,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                             killers[ply][0] = move;
                         } else {
                             // Capture-history.
-                            capture_hist[MoveBits::piece_type(move)][MoveBits::from(move)]
-                                        [MoveBits::to(move)] += depth * depth;
+                            for (int8_t p = board->student_count; p >= 0; p -= 2)
+                                capture_hist[MoveBits::piece_type(move)][MoveBits::from(
+                                        move)][MoveBits::to(move)][p] += depth * depth;
                         }
 
                         break;
@@ -449,13 +450,15 @@ void Thread::reset() {
         for (auto &sq1 : pt1)
             for (auto &pt2 : sq1)
                 for (auto &sq2 : pt2)
-                    sq2 = 0;
+                    for (auto &p : sq2)
+                        p = 0;
 
     // Capture-history.
     for (auto &pt : capture_hist)
         for (auto &sq1 : pt)
             for (auto &sq2 : sq1)
-                sq2 = 0;
+                for (auto &p : sq2)
+                    p = 0;
 
     // Counter-cards.
     for (auto &card1 : counter_card)
@@ -489,7 +492,7 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         bool card_index = MoveBits::card_index(move);
 
         if (captures) {
-            sort_values[i] = capture_hist[piece_type][from][to];
+            sort_values[i] = capture_hist[piece_type][from][to][board->student_count];
             sort_values[i] +=
                     counter_card[board->cards[board->turn][0]]
                                 [board->cards[board->turn][1]][board->side_card][1] *
@@ -501,7 +504,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
 
         // Counter-history.
         if (last_move)
-            sort_values[i] = counter_hist[last_pt][last_to][piece_type][to];
+            sort_values[i] =
+                    counter_hist[last_pt][last_to][piece_type][to][board->student_count];
 
         // Counter-card.
         sort_values[i] +=

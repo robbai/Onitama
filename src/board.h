@@ -17,7 +17,7 @@ class Board {
     bool turn = WHITE;                // Turn to move.
     uint16_t move_count = 0;
     Hash hash = 0;
-    uint8_t student_count = 8;
+    uint8_t student_count = MAX_STUDENTS;
     int8_t student_delta = 0;
 
     bool game_over();

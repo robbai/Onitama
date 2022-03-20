@@ -17,8 +17,9 @@ class Thread {
  private:
     static const uint8_t KILLER_NUM = 2;
 
-    uint16_t counter_hist[PIECE_TYPES_NUM][SQUARE_NUM][PIECE_TYPES_NUM][SQUARE_NUM];
-    uint16_t capture_hist[PIECE_TYPES_NUM][SQUARE_NUM][SQUARE_NUM];
+    uint16_t counter_hist[PIECE_TYPES_NUM][SQUARE_NUM][PIECE_TYPES_NUM][SQUARE_NUM]
+                         [MAX_STUDENTS];
+    uint16_t capture_hist[PIECE_TYPES_NUM][SQUARE_NUM][SQUARE_NUM][MAX_STUDENTS];
     int counter_card[CARD_NUM][CARD_NUM][CARD_NUM][2];
     Move killers[MAX_DEPTH][KILLER_NUM];
     int sort_values[MAX_MOVES] = {};
