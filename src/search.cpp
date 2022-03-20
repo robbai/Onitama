@@ -238,7 +238,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                         int hist = counter_hist[MoveBits::piece_type(last_move)]
                                                [MoveBits::to(last_move)][piece_type][to]
                                                [board->student_count];
-                        if (hist > 130)
+                        if (hist > 195)
                             reduction -= 1;
                     }
 
