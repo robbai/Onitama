@@ -399,6 +399,8 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
                 beta = std::min(beta, entry->value);
                 break;
         }
+        if (alpha >= beta)
+            return entry->value;
     }
 
     // Evaluate.
