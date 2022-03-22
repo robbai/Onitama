@@ -386,6 +386,21 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
     if (board->has_winning_move())
         return -(MIN_EVAL + board->move_count + 1);
 
+    // Probe TT.
+    TTEntry *entry = TTABLE.probe(board);
+    if (entry->remaining_hash == (board->hash >> 32)) {
+        switch (entry->type) {
+            case EXACT:
+                return entry->value;
+            case LOWER:
+                alpha = std::max(alpha, entry->value);
+                break;
+            case UPPER:
+                beta = std::min(beta, entry->value);
+                break;
+        }
+    }
+
     // Evaluate.
     bool win_threat = board->has_winning_move(!board->turn);
     int value = (win_threat ? MIN_EVAL + board->move_count + 2
