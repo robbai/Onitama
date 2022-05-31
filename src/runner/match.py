@@ -36,7 +36,7 @@ class Match:
 
         # Range.
         stdev: float = sqrt(
-            (wins * (1 - score) ** 2 + losses * score ** 2) / (games - 1)
+            (wins * (1 - score) ** 2 + losses * score**2) / (games - 1)
         )
         _min = score - stdevs * stdev / sqrt(games)
         _max = score + stdevs * stdev / sqrt(games)

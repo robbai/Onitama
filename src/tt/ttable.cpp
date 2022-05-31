@@ -1,4 +1,5 @@
 #include "ttable.h"
+#include <math.h>
 
 // The minimum size in MB for the TT to use.
 const uint32_t MIN_MB = 5000;
