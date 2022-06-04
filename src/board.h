@@ -23,6 +23,15 @@ class Board {
     bool game_over();
     Board copy();
     bool operator==(const Board &other);
+
+    Bitboard get_checkers(bool turn);
+    inline Bitboard get_checkers() {
+        return this->get_checkers(this->turn);
+    }
+    bool get_runner(bool turn);
+    inline bool get_runner() {
+        return this->get_runner(this->turn);
+    }
     bool has_winning_move(bool turn);
     inline bool has_winning_move() {
         return this->has_winning_move(this->turn);

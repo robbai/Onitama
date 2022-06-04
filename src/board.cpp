@@ -33,24 +33,27 @@ bool Board::operator==(const Board &other) {
     return this->side_card == other.side_card && this->turn == other.turn;
 }
 
-bool Board::has_winning_move(bool turn) {
-    // Stream.
-    Square opponent_sq = (turn ? 2 : 22);
-    if (!(HOMES[!turn] & this->pieces[turn][STUDENT])) {
-        if ((MOVE_TABLES[(this->cards[turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
-                         !turn] |
-             MOVE_TABLES[(this->cards[turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
-                         !turn]) &
-            this->pieces[turn][MASTER])
-            return true;
-    }
+Bitboard Board::get_checkers(bool turn) {
+    Square master_sq = __builtin_ctz(this->pieces[turn][MASTER]);
+    return (MOVE_TABLES[(this->cards[!turn][0] * SQUARE_NUM + master_sq) *
+                                 PLAYERS_NUM +
+                         turn] |
+             MOVE_TABLES[(this->cards[!turn][1] * SQUARE_NUM + master_sq) *
+                                 PLAYERS_NUM +
+                         turn]) &
+            (this->pieces[!turn][STUDENT] | this->pieces[!turn][MASTER]);
+}
 
-    // Stone.
-    opponent_sq = __builtin_ctz(this->pieces[!turn][MASTER]);
-    Bitboard our_pieces = this->pieces[turn][STUDENT] | this->pieces[turn][MASTER];
-    return (MOVE_TABLES[(this->cards[turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
-                        !turn] |
-            MOVE_TABLES[(this->cards[turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
-                        !turn]) &
-           our_pieces;
+bool Board::get_runner(bool turn) {
+    Square opponent_sq = (turn ? 22 : 2);
+    return (!(HOMES[turn] & this->pieces[!turn][STUDENT])) &&
+        ((MOVE_TABLES[(this->cards[!turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+                         turn] |
+             MOVE_TABLES[(this->cards[!turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+                         turn]) &
+            this->pieces[!turn][MASTER]);
+}
+
+bool Board::has_winning_move(bool turn) {
+    return this->get_runner(!turn) || this->get_checkers(!turn);
 }

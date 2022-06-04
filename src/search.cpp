@@ -15,6 +15,7 @@
 #include "tb/tb_probe.h"
 #include "tt/ttable.h"
 #include "evaluate.h"
+#include "move_tables.h"
 
 constexpr int MIN_EVAL = -100000, MIN_WINDOW = 20;
 
@@ -86,10 +87,18 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
         return MIN_EVAL + board->move_count;
     }
 
-    // Win in one.
-    if (!root && board->has_winning_move()) {
-        ++nodes;
-        return -(MIN_EVAL + board->move_count + 1);
+    if (!root) {
+        // Win in one.
+        if (board->has_winning_move()) {
+            ++nodes;
+            return -(MIN_EVAL + board->move_count + 1);
+        }
+
+        // Lose in one.
+        if (board->get_runner()) {
+            ++nodes;
+            return MIN_EVAL + board->move_count + 2;
+        }
     }
 
     // Probe TB.
@@ -403,15 +412,19 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
             return entry->value;
     }
 
+    // Threats.
+    if (board->get_runner())
+        return MIN_EVAL + board->move_count + 2;
+    Bitboard checkers = board->get_checkers();
+
     // Evaluate.
-    bool win_threat = board->has_winning_move(!board->turn);
-    int value = (win_threat ? MIN_EVAL + board->move_count + 2
+    int value = (checkers ? MIN_EVAL + board->move_count + 2
                             : (evaluate(board) / 16) * 16 + 2 * (nodes & 5) - 5);
     if (value >= beta)
         return beta;
 
     // Delta prune (futility).
-    if (!win_threat && value < alpha - 3512 && !is_mate_value(beta))
+    if (!checkers && value < alpha - 3512 && !is_mate_value(beta))
         return alpha;
 
     if (value > alpha)
@@ -424,7 +437,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
     Move *moves = move_lists[ply];
     uint8_t size;
-    for (uint8_t stage = Q_RECAPTURE; stage <= (win_threat ? Q_ALL : Q_CAPTURE);
+    for (uint8_t stage = Q_RECAPTURE; stage <= (checkers ? Q_ALL : Q_CAPTURE);
          ++stage) {
         switch (stage) {
             case Q_RECAPTURE:
@@ -444,6 +457,11 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
         for (uint8_t i = 0; i < size; ++i) {
             const Move move = moves[i];
+
+            // Skip moves that don't attempt to evade check.
+            if (checkers && !(MoveBits::piece_type(move) || (1u << MoveBits::to(move)) == checkers))
+                continue;
+
             make_move(board, move);
             value = -q_search(board, -beta, -alpha, ply + 1);
             undo_move(board, move);
