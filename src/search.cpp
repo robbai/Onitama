@@ -72,6 +72,91 @@ bool is_mate_value(int value) {
     return value < MIN_EVAL + MAX_DEPTH + 255;
 }
 
+int see(Bitboard us, Square us_master, Bitboard them, Square them_master, Square to,
+        bool turn, Card c1, Card c2, Card c3, Card c4, Card c5) {
+    Bitboard to_mask = 1u << to;
+
+    int value = 0;
+
+    Bitboard pieces = us;
+    while (pieces) {
+        Square from = __builtin_ctz(pieces);
+        Bitboard from_mask = 1u << from;
+
+        if ((MOVE_TABLES[(c1 * SQUARE_NUM + from) * PLAYERS_NUM + turn]) & to_mask) {
+            if (to == them_master)
+                return 10;
+            value = std::max(0, 1 - see(them & ~to_mask, them_master,
+                                        us ^ from_mask | to_mask,
+                                        from == us_master ? to : us_master, to, !turn, c3,
+                                        c4, c5, c2, c1));
+        }
+        if ((MOVE_TABLES[(c2 * SQUARE_NUM + from) * PLAYERS_NUM + turn]) & to_mask) {
+            if (to == them_master)
+                return 10;
+            value = std::max(0, 1 - see(them & ~to_mask, them_master,
+                                        us ^ from_mask | to_mask,
+                                        from == us_master ? to : us_master, to, !turn, c3,
+                                        c4, c1, c5, c2));
+        }
+
+        pieces ^= from_mask;
+    }
+
+    return value;
+}
+
+int see_move(Board *board, Move move) {
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
+    Bitboard mask = (1u << from) | (1u << to);
+    bool card_index = MoveBits::card_index(move);
+    Square us_master = __builtin_ctz(board->pieces[board->turn][1]);
+    if (us_master == from)
+        us_master = to;
+
+    int value = MoveBits::capture(move);
+    value -=
+            see((board->pieces[!board->turn][0] | board->pieces[!board->turn][1]) & ~mask,
+                __builtin_ctz(board->pieces[!board->turn][1]),
+                (board->pieces[board->turn][0] | board->pieces[board->turn][1]) ^ mask,
+                us_master, to, !board->turn, board->cards[!board->turn][0],
+                board->cards[!board->turn][1], board->cards[board->turn][!card_index],
+                board->side_card, board->cards[board->turn][card_index]);
+    return value;
+}
+
+int see_all(Board *board, Move move) {
+    bool capture = MoveBits::capture(move);
+    Square from = MoveBits::from(move);
+    Square to = MoveBits::to(move);
+    Bitboard mask = (1u << from) | (1u << to);
+    bool card_index = MoveBits::card_index(move);
+    Bitboard us = (board->pieces[board->turn][0] | board->pieces[board->turn][1]) ^ mask;
+    Square us_master = __builtin_ctz(board->pieces[board->turn][1]);
+    if (us_master == from)
+        us_master = to;
+
+    int value = capture;
+
+    Bitboard pieces = us;
+    while (pieces) {
+        Square sq = __builtin_ctz(pieces);
+        value = std::min(
+                value,
+                capture - see((board->pieces[!board->turn][0] |
+                               board->pieces[!board->turn][1]) &
+                                      ~mask,
+                              __builtin_ctz(board->pieces[!board->turn][1]), us,
+                              us_master, sq, !board->turn, board->cards[!board->turn][0],
+                              board->cards[!board->turn][1],
+                              board->cards[board->turn][!card_index], board->side_card,
+                              board->cards[board->turn][card_index]));
+        pieces ^= 1u << sq;
+    }
+    return value;
+}
+
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool cut_node,
                    Move last_move, bool check_tb, Move excluded_move) {
     if (stop)
@@ -207,7 +292,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 size = gen_moves(board, moves, targets);
 
                 // Sort moves.
-                sort_moves(board, moves, size, stage == CAPTURE, last_move);
+                sort_moves(board, moves, size, stage == CAPTURE, false, last_move);
                 break;
         }
 
@@ -419,7 +504,7 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
     // Evaluate.
     int value = (checkers ? MIN_EVAL + board->move_count + 2
-                            : (evaluate(board) / 16) * 16 + 2 * (nodes & 5) - 5);
+                          : (evaluate(board) / 16) * 16 + 2 * (nodes & 5) - 5);
     if (value >= beta)
         return beta;
 
@@ -437,21 +522,20 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
 
     Move *moves = move_lists[ply];
     uint8_t size;
-    for (uint8_t stage = Q_RECAPTURE; stage <= (checkers ? Q_ALL : Q_CAPTURE);
-         ++stage) {
+    for (uint8_t stage = Q_RECAPTURE; stage <= (checkers ? Q_ALL : Q_CAPTURE); ++stage) {
         switch (stage) {
             case Q_RECAPTURE:
                 size = gen_moves(board, moves, recapture);
-                sort_moves(board, moves, size, true);
+                sort_moves(board, moves, size, true, true);
                 break;
             case Q_CAPTURE:
                 size = gen_moves(board, moves,
                                  board->pieces[!board->turn][STUDENT] & ~recapture);
-                sort_moves(board, moves, size, true);
+                sort_moves(board, moves, size, true, true);
                 break;
             default:
                 size = gen_moves(board, moves, ~board->pieces[!board->turn][STUDENT]);
-                sort_moves(board, moves, size, false);
+                sort_moves(board, moves, size, false, true);
                 break;
         }
 
@@ -459,7 +543,8 @@ int Thread::q_search(Board *board, int alpha, int beta, int ply, Move last_move)
             const Move move = moves[i];
 
             // Skip moves that don't attempt to evade check.
-            if (checkers && !(MoveBits::piece_type(move) || (1u << MoveBits::to(move)) == checkers))
+            if (checkers &&
+                !(MoveBits::piece_type(move) || (1u << MoveBits::to(move)) == checkers))
                 continue;
 
             make_move(board, move);
@@ -509,7 +594,7 @@ void Thread::reset() {
 }
 
 void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
-                        Move last_move) {
+                        bool quiescence, Move last_move) {
     Square last_to = SQUARE_NUM;
     bool last_pt = false;
     bool last_capture = MoveBits::capture(last_move);
@@ -527,7 +612,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
         bool card_index = MoveBits::card_index(move);
 
         if (captures) {
-            sort_values[i] = capture_hist[piece_type][from][to][board->student_count];
+            sort_values[i] = 4000 * see_move(board, move);
+            sort_values[i] += capture_hist[piece_type][from][to][board->student_count];
             sort_values[i] +=
                     counter_card[board->cards[board->turn][0]]
                                 [board->cards[board->turn][1]][board->side_card][1] *
@@ -536,10 +622,12 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                 sort_values[i] += last_capture ? 162 : 810;
             continue;
         }
+		
+		sort_values[i] = quiescence ? 0 : 2000 * see_move(board, move);
 
         // Counter-history.
         if (last_move)
-            sort_values[i] =
+            sort_values[i] +=
                     counter_hist[last_pt][last_to][piece_type][to][board->student_count];
 
         // Counter-card.

@@ -27,7 +27,7 @@ class Thread {
     bool pv_played[MAX_DEPTH];
 
     void sort_moves(Board *board, Move *moves, uint8_t size, bool captures = false,
-                    Move last_move = 0);
+                    bool quiescence = false, Move last_move = 0);
     int q_search(Board *board, int alpha, int beta, int ply, Move last_move = 0);
     bool is_killer(uint8_t ply, Move move, uint8_t killer_num = KILLER_NUM);
 

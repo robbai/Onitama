@@ -33,23 +33,25 @@ bool Board::operator==(const Board &other) {
     return this->side_card == other.side_card && this->turn == other.turn;
 }
 
+Bitboard Board::get_attackers(Square sq, bool turn) {
+    return (MOVE_TABLES[(this->cards[turn][0] * SQUARE_NUM + sq) * PLAYERS_NUM + !turn] |
+            MOVE_TABLES[(this->cards[turn][1] * SQUARE_NUM + sq) * PLAYERS_NUM + !turn]) &
+           (this->pieces[turn][STUDENT] | this->pieces[turn][MASTER]);
+}
+
 Bitboard Board::get_checkers(bool turn) {
     Square master_sq = __builtin_ctz(this->pieces[turn][MASTER]);
-    return (MOVE_TABLES[(this->cards[!turn][0] * SQUARE_NUM + master_sq) *
-                                 PLAYERS_NUM +
-                         turn] |
-             MOVE_TABLES[(this->cards[!turn][1] * SQUARE_NUM + master_sq) *
-                                 PLAYERS_NUM +
-                         turn]) &
-            (this->pieces[!turn][STUDENT] | this->pieces[!turn][MASTER]);
+    return this->get_attackers(master_sq, !turn);
 }
 
 bool Board::get_runner(bool turn) {
     Square opponent_sq = (turn ? 22 : 2);
     return (!(HOMES[turn] & this->pieces[!turn][STUDENT])) &&
-        ((MOVE_TABLES[(this->cards[!turn][0] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+           ((MOVE_TABLES[(this->cards[!turn][0] * SQUARE_NUM + opponent_sq) *
+                                 PLAYERS_NUM +
                          turn] |
-             MOVE_TABLES[(this->cards[!turn][1] * SQUARE_NUM + opponent_sq) * PLAYERS_NUM +
+             MOVE_TABLES[(this->cards[!turn][1] * SQUARE_NUM + opponent_sq) *
+                                 PLAYERS_NUM +
                          turn]) &
             this->pieces[!turn][MASTER]);
 }

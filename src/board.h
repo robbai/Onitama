@@ -24,6 +24,10 @@ class Board {
     Board copy();
     bool operator==(const Board &other);
 
+    Bitboard get_attackers(Square sq, bool turn);
+    inline Bitboard get_attackers(Square sq) {
+        return this->get_attackers(sq, this->turn);
+    }
     Bitboard get_checkers(bool turn);
     inline Bitboard get_checkers() {
         return this->get_checkers(this->turn);
