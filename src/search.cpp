@@ -317,7 +317,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             int8_t reduction = 0;
             if (move_num) {
                 // Futility prune.
-                if (!is_mate_value(alpha) && !is_mate_value(beta) && stage > CAPTURE &&
+                if (!excluded_move && !is_mate_value(alpha) && !is_mate_value(beta) && stage > CAPTURE &&
                     depth < 6 &&
                     entry->value < alpha - 500 * std::max(1, depth - entry->depth))
                     break;
