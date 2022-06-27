@@ -320,7 +320,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     // Futility prune.
                     if (stage > CAPTURE &&
                         depth < 6 &&
-                        entry->value < alpha - 500 * std::max(1, depth - entry->depth))
+                        entry->value < alpha - 250 * std::max(1, depth - entry->depth))
                         break;
 
                     // SEE prune.
