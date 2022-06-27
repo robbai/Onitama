@@ -202,14 +202,16 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     }
 
     // Score repetitions in search as a draw.
-    for (uint8_t p1 = (ply & 1); p1 < ply; p1 += 2) {
-        if (this->hash_line[p1] == board->hash) {
-            for (uint8_t p2 = p1 + 1; p2 < ply; p2 += 2) {
-                if (!pv_played[p2])
-                    break;
-                if (p2 + 2 >= ply) {
-                    ++nodes;
-                    return 0;
+    if (depth > 2) {
+        for (uint8_t p1 = (ply & 1); p1 < ply; p1 += 2) {
+            if (this->hash_line[p1] == board->hash) {
+                for (uint8_t p2 = p1 + 1; p2 < ply; p2 += 2) {
+                    if (!pv_played[p2])
+                        break;
+                    if (p2 + 2 >= ply) {
+                        ++nodes;
+                        return 0;
+                    }
                 }
             }
         }
