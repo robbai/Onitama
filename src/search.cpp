@@ -158,13 +158,14 @@ int see_all(Board *board, Move move) {
 }
 
 int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool cut_node,
-                   Move last_move, bool check_tb, Move excluded_move) {
+                   Move last_move, bool check_tb, int pv_dist, Move excluded_move) {
     if (stop)
         return 0;
 
     int alpha_original = alpha;
     bool root = !ply;
     bool pv_node = beta - alpha != 1;
+    pv_dist += !pv_node;
 
     // Terminal.
     if (board->game_over()) {
@@ -356,7 +357,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             }
 
             // Extensions.
-            if (ply < root_depth * 2) {
+            bool can_extend = ply < root_depth * 2 && ply < MAX_DEPTH - 2;
+            if (can_extend) {
                 // Singular extension.
                 if (move == entry->move && !root && !excluded_move &&
                     depth > (pv_node ? 3 : 5) && entry->type != UPPER &&
@@ -365,7 +367,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     int singular_depth = (depth - 2) / 4;
                     int value =
                             search(board, singular_depth, singular_beta - 1,
-                                   singular_beta, ply, cut_node, last_move, false, move);
+                                   singular_beta, ply, cut_node, last_move, false, pv_dist - !pv_node, move);
                     if (value < singular_beta)
                         reduction -= 1;
                 }
@@ -376,31 +378,35 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 }
             }
 
+            make_move(board, move);
+
+            // Check extension.
+            if (can_extend && !pv_node && pv_dist < 4 && board->get_checkers())
+                reduction -= 1;
+
             if (reduction > depth - 1)
                 reduction = depth - 1;
-
-            make_move(board, move);
 
             int value;
             bool now_check_tb = (root || MoveBits::capture(move)) && GENERATED_TB;
             if (!move_num) {
                 value = -search(board, depth - 1 - reduction, -beta, -alpha, ply + 1,
-                                false, move, now_check_tb);
+                                false, move, now_check_tb, pv_dist);
             } else {
                 // Reductions and null window.
                 value = -search(board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1,
-                                true, move, now_check_tb);
+                                true, move, now_check_tb, pv_dist);
 
                 // Null window.
                 if (value > alpha && reduction > 0) {
                     value = -search(board, depth - 1, -alpha - 1, -alpha, ply + 1,
-                                    !cut_node, move, now_check_tb);
+                                    !cut_node, move, now_check_tb, pv_dist);
                 }
 
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, false, move, now_check_tb);
+                                    -beta, -alpha, ply + 1, false, move, now_check_tb, pv_dist);
                 }
             }
 
