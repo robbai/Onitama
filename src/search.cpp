@@ -258,6 +258,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     // Prepare branching.
     Move best_move;
     int best_value = MIN_EVAL;
+    Bitboard checkers = board->get_checkers();
 
     if (depth > 5 && !(hash_match && move_exists(board, entry->move)))
         depth -= 2;
@@ -321,8 +322,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             if (move_num) {
                 if (!excluded_move && !is_mate_value(alpha) && !is_mate_value(beta)) {
                     // Futility prune.
-                    if (stage > CAPTURE &&
-                        depth < 6 &&
+                    if (stage > CAPTURE && depth < 6 &&
                         entry->value < alpha - 250 * std::max(1, depth - entry->depth))
                         break;
 
@@ -365,9 +365,9 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                     abs(entry->value) < 3029 && entry->depth > depth - 7) {
                     int singular_beta = entry->value - 21 * depth;
                     int singular_depth = (depth - 2) / 4;
-                    int value =
-                            search(board, singular_depth, singular_beta - 1,
-                                   singular_beta, ply, cut_node, last_move, false, pv_dist - !pv_node, move);
+                    int value = search(board, singular_depth, singular_beta - 1,
+                                       singular_beta, ply, cut_node, last_move, false,
+                                       pv_dist - !pv_node, move);
                     if (value < singular_beta)
                         reduction -= 1;
                 }
@@ -381,7 +381,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             make_move(board, move);
 
             // Check extension.
-            if (can_extend && !pv_node && pv_dist < 4 && board->get_checkers())
+            if (can_extend && checkers && !pv_node && pv_dist < 4)
                 reduction -= 1;
 
             if (reduction > depth - 1)
@@ -406,7 +406,8 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                 // Full search.
                 if (value > alpha) {
                     value = -search(board, depth - 1 - (reduction > 0 ? 0 : reduction),
-                                    -beta, -alpha, ply + 1, false, move, now_check_tb, pv_dist);
+                                    -beta, -alpha, ply + 1, false, move, now_check_tb,
+                                    pv_dist);
                 }
             }
 
@@ -427,19 +428,22 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
                                 (MoveBits::card_index(move) ? 1 : -1) * (depth * depth);
 
                         if (!capture) {
-                            // Counter-history.
-                            if (last_move) {
-                                for (int8_t p = board->student_count; p >= 0; p -= 2)
-                                    counter_hist[MoveBits::piece_type(last_move)]
-                                                [MoveBits::to(last_move)]
-                                                [MoveBits::piece_type(move)]
-                                                [MoveBits::to(move)][p] += depth * depth;
-                            }
+                            if (!checkers) {
+                                // Counter-history.
+                                if (last_move) {
+                                    for (int8_t p = board->student_count; p >= 0; p -= 2)
+                                        counter_hist[MoveBits::piece_type(last_move)]
+                                                    [MoveBits::to(last_move)]
+                                                    [MoveBits::piece_type(move)]
+                                                    [MoveBits::to(move)][p] +=
+                                                depth * depth;
+                                }
 
-                            // Killer move.
-                            for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
-                                killers[ply][k] = killers[ply][k - 1];
-                            killers[ply][0] = move;
+                                // Killer move.
+                                for (uint8_t k = (KILLER_NUM - 1); k > 0; --k)
+                                    killers[ply][k] = killers[ply][k - 1];
+                                killers[ply][0] = move;
+                            }
                         } else {
                             // Capture-history.
                             for (int8_t p = board->student_count; p >= 0; p -= 2)
@@ -636,8 +640,8 @@ void Thread::sort_moves(Board *board, Move *moves, uint8_t size, bool captures,
                 sort_values[i] += last_capture ? 162 : 810;
             continue;
         }
-		
-		sort_values[i] = quiescence ? 0 : 2000 * see_move(board, move);
+
+        sort_values[i] = quiescence ? 0 : 2000 * see_move(board, move);
 
         // Counter-history.
         if (last_move)
