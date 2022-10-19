@@ -162,7 +162,6 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
     if (stop)
         return 0;
 
-    int alpha_original = alpha;
     bool root = !ply;
     bool pv_node = beta - alpha != 1;
     pv_dist += !pv_node;
@@ -468,12 +467,12 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
 
     // Store in TT.
     if (entry->depth <= depth || root) {
-        if (best_value <= alpha_original) {
-            entry->type = UPPER;
-        } else if (best_value >= beta) {
+        if (best_value >= beta) {
             entry->type = LOWER;
-        } else {
+        } else if (pv_node && best_move) {
             entry->type = EXACT;
+        } else {
+            entry->type = UPPER;
         }
         entry->depth = depth;
         entry->remaining_hash = remaining_hash;
