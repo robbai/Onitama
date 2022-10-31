@@ -359,7 +359,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             bool can_extend = ply < root_depth * 2 && ply < MAX_DEPTH - 2;
             if (can_extend) {
                 // Singular extension.
-                if (move == entry->move && ply > 1 && !excluded_move &&
+                if (move == entry->move && ply > 2 && !excluded_move &&
                     depth > (pv_node ? 3 : 5) && entry->type != UPPER &&
                     abs(entry->value) < 3029 && entry->depth > depth - 7) {
                     int singular_beta = entry->value - 21 * depth;
