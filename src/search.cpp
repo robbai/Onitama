@@ -379,7 +379,7 @@ int Thread::search(Board *board, int depth, int alpha, int beta, int ply, bool c
             make_move(board, move);
 
             // Check extension.
-            if (can_extend && checkers && !pv_node && pv_dist < 6)
+            if (can_extend && checkers && !pv_node && pv_dist < 12)
                 reduction -= 1;
 
             if (reduction > depth - 1)
